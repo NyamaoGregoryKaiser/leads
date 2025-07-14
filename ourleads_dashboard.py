@@ -550,6 +550,7 @@ if not df_ts.empty and 'DATE_parsed' in df_ts.columns:
         .size()
         .reset_index(name='leads_count')
     )
+    daily_leads.columns = ['date', 'leads_count']
     daily_leads['date'] = pd.to_datetime(daily_leads['date'])
     daily_leads = daily_leads.sort_values('date')
 
