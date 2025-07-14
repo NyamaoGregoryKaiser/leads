@@ -511,18 +511,27 @@ st.markdown("---")
 
 # --- Time Series Chart ---
 st.subheader("Leads per Day - Time Series")
-# Branch filter for Time Series (top-right above plot)
-_, filter_col_ts = st.columns([10, 1])
+# Branch and Month filters for Time Series (top-right above plot)
+_, filter_col_ts = st.columns([8, 2])
 with filter_col_ts:
     with st.container():
         st.markdown('<div class="small-filter">', unsafe_allow_html=True)
         branches_ts = ['All'] + sorted(df['BRANCH'].unique()) if 'BRANCH' in df.columns else ['All']
-        selected_branch_ts = st.selectbox('Filter by Branch (Time Series)', branches_ts, key='branch_filter_timeseries')
+        selected_branch_ts = st.selectbox('Branch', branches_ts, key='branch_filter_timeseries')
+        # Month filter
+        if 'DATE' in df.columns:
+            months = sorted(df['DATE_parsed'].dropna().dt.strftime('%Y-%m').unique())
+            months = ['All'] + months
+        else:
+            months = ['All']
+        selected_month_ts = st.selectbox('Month', months, key='month_filter_timeseries')
         st.markdown('</div>', unsafe_allow_html=True)
 if selected_branch_ts != 'All' and 'BRANCH' in df.columns:
     df_ts = df[df['BRANCH'] == selected_branch_ts].copy()
 else:
     df_ts = df.copy()
+if selected_month_ts != 'All' and 'DATE' in df_ts.columns:
+    df_ts = df_ts[df_ts['DATE_parsed'].dt.strftime('%Y-%m') == selected_month_ts]
 if 'DATE' in df_ts.columns:
     # Clean and parse dates
     df_ts['DATE_parsed'] = pd.to_datetime(df_ts['DATE'], errors='coerce')
