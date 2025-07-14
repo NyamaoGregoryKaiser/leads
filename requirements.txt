@@ -6,3 +6,4 @@
    plotly
    numpy
    Pillow
+   google-auth>=2.0.0

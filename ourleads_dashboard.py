@@ -10,6 +10,7 @@ import numpy as np
 from PIL import Image
 import json
 import os
+from google.oauth2.service_account import Credentials
 
 st.set_page_config(page_title="Our Leads Dashboard", layout="wide")
 
@@ -27,21 +28,16 @@ def get_leads_dataframe():
     try:
         # Check if credentials are available as environment variable (for production)
         if 'GOOGLE_CREDENTIALS' in os.environ:
-            try:
-                creds_json = os.environ['GOOGLE_CREDENTIALS']
-                # Remove any extra quotes or formatting
-                creds_json = creds_json.strip().strip("'").strip('"')
-                creds_dict = json.loads(creds_json)
-                creds = ServiceAccountCredentials.from_service_account_info(creds_dict, scope)
-                st.success("✅ Using credentials from environment variables")
-            except json.JSONDecodeError as e:
-                st.error(f"❌ Invalid JSON in GOOGLE_CREDENTIALS: {e}")
-                st.info("Please check your Streamlit Cloud secrets configuration.")
-                return pd.DataFrame()
+            creds_json = os.environ['GOOGLE_CREDENTIALS']
+            # Remove any extra quotes or formatting
+            creds_json = creds_json.strip().strip("'").strip('"')
+            creds_dict = json.loads(creds_json)
+            creds = Credentials.from_service_account_info(creds_dict, scopes=scope)
+            st.success("✅ Using credentials from environment variables")
         else:
             # Use local credentials file (for development)
             if os.path.exists('credentials.json'):
-                creds = ServiceAccountCredentials.from_json_keyfile_name('credentials.json', scope)
+                creds = Credentials.from_service_account_file('credentials.json', scopes=scope)
                 st.success("✅ Using local credentials.json file")
             else:
                 st.error("❌ No credentials found!")
