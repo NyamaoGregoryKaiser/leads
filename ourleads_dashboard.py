@@ -337,7 +337,14 @@ with col_branch:
         st.info('BRANCH or SOURCE OF LEAD GENERATION column not found in the data.')
 with col_source:
     st.subheader("Leads per Source")
-    source_counts = df['SOURCE OF LEAD GENERATION'].value_counts()
+    # Branch filter for Leads per Source
+    branches = ['All'] + sorted(df['BRANCH'].unique()) if 'BRANCH' in df.columns else ['All']
+    selected_branch = st.selectbox('Filter by Branch', branches, key='branch_filter_source')
+    if selected_branch != 'All' and 'BRANCH' in df.columns:
+        df_source = df[df['BRANCH'] == selected_branch]
+    else:
+        df_source = df
+    source_counts = df_source['SOURCE OF LEAD GENERATION'].value_counts()
     import plotly.graph_objects as go
     bar_fig = go.Figure()
     bar_fig.add_bar(x=source_counts.index, y=source_counts.values, marker_color="#0074D9")
