@@ -345,7 +345,7 @@ with col_source:
         margin=dict(l=20, r=20, t=30, b=40),
         showlegend=False
     )
-    st.plotly_chart(bar_fig, use_container_width=True)
+    st.plotly_chart(bar_fig, use_container_width=True, config={'displayModeBar': False, 'scrollZoom': True})
 
 # Place Leads per Team Lead and Team Leader Conversion Ratios side by side
 col_leads, col_conv = st.columns(2)
@@ -376,7 +376,7 @@ with col_leads:
         margin=dict(l=20, r=20, t=30, b=40),
         showlegend=False
     )
-    st.plotly_chart(bar_fig2, use_container_width=True)
+    st.plotly_chart(bar_fig2, use_container_width=True, config={'displayModeBar': False, 'scrollZoom': True})
 with col_conv:
     # --- Conversion Ratio Analysis ---
     st.subheader("Team Leader Conversion Ratios (June & July Sales)")
@@ -459,7 +459,7 @@ with col_conv:
         fig.update_xaxes(showgrid=True, gridcolor='#eee')
         fig.update_yaxes(autorange="reversed")
         st.markdown('<div style="overflow-x:auto;width=100%">', unsafe_allow_html=True)
-        st.plotly_chart(fig, use_container_width=False)
+        st.plotly_chart(fig, use_container_width=False, config={'displayModeBar': False, 'scrollZoom': True})
         st.markdown('</div>', unsafe_allow_html=True)
     else:
         st.info('CLIENT CONTACT or TEAM LEADER NAME column not found in the leads data.')
@@ -545,7 +545,7 @@ if 'DATE' in df.columns:
         )
     )
     
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False, 'scrollZoom': True})
     
     # Add summary statistics with responsive grid
     st.markdown('''
@@ -658,7 +658,7 @@ with col_left:
             title=None,
         )
         st.markdown('<div style="overflow-x:auto;width:100%">', unsafe_allow_html=True)
-        st.plotly_chart(fig, use_container_width=False)
+        st.plotly_chart(fig, use_container_width=False, config={'displayModeBar': False, 'scrollZoom': True})
         st.markdown('</div>', unsafe_allow_html=True)
     else:
         st.info('BRANCH or AGENT NAME column not found in the data.')
