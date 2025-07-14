@@ -153,11 +153,19 @@ else:
     st.stop()
     df['DATE_parsed'] = pd.NaT
 
+# Branch filter for summary cards
+branches_cards = ['All'] + sorted(df['BRANCH'].unique()) if 'BRANCH' in df.columns else ['All']
+selected_branch_cards = st.selectbox('Filter by Branch (Cards)', branches_cards, key='branch_filter_cards')
+if selected_branch_cards != 'All' and 'BRANCH' in df.columns:
+    df_cards = df[df['BRANCH'] == selected_branch_cards].copy()
+else:
+    df_cards = df.copy()
+
+# Recalculate card metrics based on filtered df_cards
 today = pd.Timestamp(datetime.now().date())
-leads_today = df[df['DATE_parsed'].dt.date == today.date()].shape[0]
+leads_today = df_cards[df_cards['DATE_parsed'].dt.date == today.date()].shape[0]
 yesterday = today - pd.Timedelta(days=1)
-leads_yesterday = df[df['DATE_parsed'].dt.date == yesterday.date()].shape[0]
-# Calculate delta and arrow for today vs yesterday
+leads_yesterday = df_cards[df_cards['DATE_parsed'].dt.date == yesterday.date()].shape[0]
 leads_today_delta = leads_today - leads_yesterday
 today_arrow = f'<span style="color:#2ECC40;font-size:32px;vertical-align:middle;">&#9650;</span>' if leads_today_delta > 0 else (f'<span style="color:#FF4136;font-size:32px;vertical-align:middle;">&#9660;</span>' if leads_today_delta < 0 else '')
 if leads_yesterday > 0:
@@ -165,20 +173,12 @@ if leads_yesterday > 0:
     today_pct_str = f'<span style="color:{"#2ECC40" if leads_today_delta > 0 else "#FF4136"}; font-size:14px; font-weight:bold;">{abs(today_pct):.1f}%</span>'
 else:
     today_pct_str = ''
-
-# Calculate the start of this week and today
 week_start = today - pd.Timedelta(days=today.weekday())
-days_so_far = (today - week_start).days + 1  # +1 to include today
-
-# This week: from week_start to today
-leads_week = df[(df['DATE_parsed'] >= week_start) & (df['DATE_parsed'] <= today)].shape[0]
-
-# Previous week: same number of days (e.g., Mon–Wed last week if today is Wed)
+days_so_far = (today - week_start).days + 1
+leads_week = df_cards[(df_cards['DATE_parsed'] >= week_start) & (df_cards['DATE_parsed'] <= today)].shape[0]
 prev_week_start = week_start - pd.Timedelta(days=7)
 prev_week_end = prev_week_start + pd.Timedelta(days=days_so_far - 1)
-leads_prev_week = df[(df['DATE_parsed'] >= prev_week_start) & (df['DATE_parsed'] <= prev_week_end)].shape[0]
-
-# Calculate delta and percentage
+leads_prev_week = df_cards[(df_cards['DATE_parsed'] >= prev_week_start) & (df_cards['DATE_parsed'] <= prev_week_end)].shape[0]
 week_delta = leads_week - leads_prev_week
 week_arrow = (
     f'<span style="color:#2ECC40;font-size:32px;vertical-align:middle;">&#9650;</span>' if week_delta > 0 else
@@ -189,18 +189,13 @@ if leads_prev_week > 0:
     week_pct_str = f'<span style="color:{"#2ECC40" if week_delta > 0 else "#FF4136"}; font-size:14px; font-weight:bold;">{abs(week_pct):.1f}%</span>'
 else:
     week_pct_str = ''
-
 month_start = today.replace(day=1)
-days_so_far_month = today.day  # 1-based, so includes today
-leads_month = df[(df['DATE_parsed'] >= month_start) & (df['DATE_parsed'] <= today)].shape[0]
-
-# Previous month: same number of days (e.g., 1st–10th last month if today is the 10th)
+days_so_far_month = today.day
+leads_month = df_cards[(df_cards['DATE_parsed'] >= month_start) & (df_cards['DATE_parsed'] <= today)].shape[0]
 prev_month_end = month_start - pd.Timedelta(days=1)
 prev_month_start = prev_month_end.replace(day=1)
 prev_month_same_day = prev_month_start + pd.Timedelta(days=days_so_far_month - 1)
-leads_prev_month = df[(df['DATE_parsed'] >= prev_month_start) & (df['DATE_parsed'] <= prev_month_same_day)].shape[0]
-
-# Calculate delta and percentage
+leads_prev_month = df_cards[(df_cards['DATE_parsed'] >= prev_month_start) & (df_cards['DATE_parsed'] <= prev_month_same_day)].shape[0]
 month_delta = leads_month - leads_prev_month
 month_arrow = (
     f'<span style="color:#2ECC40;font-size:32px;vertical-align:middle;">&#9650;</span>' if month_delta > 0 else
@@ -211,8 +206,7 @@ if leads_prev_month > 0:
     month_pct_str = f'<span style="color:{"#2ECC40" if month_delta > 0 else "#FF4136"}; font-size:14px; font-weight:bold;">{abs(month_pct):.1f}%</span>'
 else:
     month_pct_str = ''
-# --- Cards ---
-total_leads = len(df)
+total_leads = len(df_cards)
 
 # Responsive flexbox for cards
 st.markdown('''
