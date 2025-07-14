@@ -348,15 +348,15 @@ with col_branch:
     else:
         st.info('BRANCH or SOURCE OF LEAD GENERATION column not found in the data.')
 with col_source:
-    st.subheader("Leads per Source")
-    # Branch filter for Leads per Source (top-right above plot)
-    _, filter_col_source = st.columns([10, 1])
-    with filter_col_source:
-        with st.container():
-            st.markdown('<div class="small-filter">', unsafe_allow_html=True)
-            branches = ['All'] + sorted(df['BRANCH'].unique()) if 'BRANCH' in df.columns else ['All']
-            selected_branch = st.selectbox('Filter by Branch', branches, key='branch_filter_source')
-            st.markdown('</div>', unsafe_allow_html=True)
+    # Inline header and filter for Leads per Source
+    col_header, col_filter = st.columns([2, 1])
+    with col_header:
+        st.subheader("Leads per Source", anchor=False)
+    with col_filter:
+        st.markdown('<div class="small-filter">', unsafe_allow_html=True)
+        branches = ['All'] + sorted(df['BRANCH'].unique()) if 'BRANCH' in df.columns else ['All']
+        selected_branch = st.selectbox(' ', branches, key='branch_filter_source')
+        st.markdown('</div>', unsafe_allow_html=True)
     if selected_branch != 'All' and 'BRANCH' in df.columns:
         df_source = df[df['BRANCH'] == selected_branch]
     else:
