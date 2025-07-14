@@ -11,6 +11,25 @@ import json
 import os
 from google.oauth2.service_account import Credentials
 
+# Force light mode for the app
+st.markdown(
+    """
+    <style>
+    html, body, [data-testid="stAppViewContainer"], .main, .block-container {
+        background-color: #fff !important;
+        color: #222 !important;
+    }
+    [data-testid="stHeader"] {
+        background: #fff !important;
+    }
+    h1, h2, h3, h4, h5, h6 {
+        color: #222 !important;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
+
 st.set_page_config(page_title="Our Leads Dashboard", layout="wide")
 
 # --- Google Sheets Setup ---
