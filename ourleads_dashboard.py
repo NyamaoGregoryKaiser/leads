@@ -30,6 +30,16 @@ st.markdown(
     unsafe_allow_html=True
 )
 
+import matplotlib as mpl
+mpl.rcParams['figure.facecolor'] = 'white'
+mpl.rcParams['axes.facecolor'] = 'white'
+mpl.rcParams['savefig.facecolor'] = 'white'
+mpl.rcParams['axes.edgecolor'] = '#222'
+mpl.rcParams['axes.labelcolor'] = '#222'
+mpl.rcParams['xtick.color'] = '#222'
+mpl.rcParams['ytick.color'] = '#222'
+mpl.rcParams['text.color'] = '#222'
+
 st.set_page_config(page_title="Our Leads Dashboard", layout="wide")
 
 # --- Google Sheets Setup ---
@@ -303,13 +313,31 @@ with col_branch:
 with col_source:
     st.subheader("Leads per Source")
     source_counts = df['SOURCE OF LEAD GENERATION'].value_counts()
-    st.bar_chart(source_counts)
+    import plotly.graph_objects as go
+    bar_fig = go.Figure()
+    bar_fig.add_bar(x=source_counts.index, y=source_counts.values, marker_color="#0074D9")
+    bar_fig.update_layout(
+        plot_bgcolor='white', paper_bgcolor='white', font_color='#222',
+        xaxis_title='Source', yaxis_title='Leads',
+        margin=dict(l=20, r=20, t=30, b=40),
+        showlegend=False
+    )
+    st.plotly_chart(bar_fig, use_container_width=True)
 
 # Place Leads per Team Lead and Team Leader Conversion Ratios side by side
 col_leads, col_conv = st.columns(2)
 with col_leads:
     st.subheader("Leads per Team Lead")
-    st.bar_chart(df['TEAM LEADER NAME'].value_counts())
+    team_lead_counts = df['TEAM LEADER NAME'].value_counts()
+    bar_fig2 = go.Figure()
+    bar_fig2.add_bar(x=team_lead_counts.index, y=team_lead_counts.values, marker_color="#0074D9")
+    bar_fig2.update_layout(
+        plot_bgcolor='white', paper_bgcolor='white', font_color='#222',
+        xaxis_title='Team Lead', yaxis_title='Leads',
+        margin=dict(l=20, r=20, t=30, b=40),
+        showlegend=False
+    )
+    st.plotly_chart(bar_fig2, use_container_width=True)
 with col_conv:
     # --- Conversion Ratio Analysis ---
     st.subheader("Team Leader Conversion Ratios (June & July Sales)")
@@ -337,29 +365,19 @@ with col_conv:
             for contacts in df_sales[col].apply(normalize_contact):
                 sales_contacts.update(contacts)
     if 'CLIENT CONTACT' in df.columns and 'TEAM LEADER NAME' in df.columns:
-        print('All TEAM LEADER NAME values before filtering:', sorted(df['TEAM LEADER NAME'].unique()))
         bad_names = ["undefined", "none", "null", "nan"]
         df_valid = df[df['TEAM LEADER NAME'].notna()].copy()
         df_valid['TLN_CLEAN'] = df_valid['TEAM LEADER NAME'].str.strip().str.lower()
         for bad in bad_names:
             df_valid = df_valid[~df_valid['TLN_CLEAN'].str.contains(bad)]
         df_valid = df_valid[df_valid['TLN_CLEAN'] != ""]
-        print("Filtered unique team leader names:", sorted(df_valid['TEAM LEADER NAME'].unique()))
-        print("First few rows of df_valid:")
-        print(df_valid.head())
         df_valid['CONTACT_NORM'] = df_valid['CLIENT CONTACT'].apply(lambda x: normalize_contact(x)[0] if normalize_contact(x) else np.nan)
         total_leads = df_valid.groupby('TEAM LEADER NAME').size()
         df_valid['converted'] = df_valid['CONTACT_NORM'].apply(lambda x: x in sales_contacts if pd.notnull(x) else False)
         converted_leads = df_valid[df_valid['converted']].groupby('TEAM LEADER NAME').size()
         ratio = (converted_leads / total_leads).fillna(0).sort_values(ascending=False)
         mask = ratio.index.str.strip().str.lower() != 'undefined'
-        print('Team leader names in ratio before final mask:', list(ratio.index))
         ratio = ratio[mask]
-        print('Team leader names in ratio after final mask:', list(ratio.index))
-        print("\n--- Team Leader Conversion Ratios (June & July Sales) ---")
-        for tln, val in ratio.items():
-            print(f"{tln}: {val:.4f}")
-        print("--- End of Conversion Ratios ---\n")
         import plotly.graph_objects as go
         team_leaders = ratio.index.tolist()
         conversion_perc = (ratio.values * 100).round(1)
@@ -379,6 +397,8 @@ with col_conv:
             width=650, height=350,
             showlegend=False,
             plot_bgcolor='white',
+            paper_bgcolor='white',
+            font_color='#222',
             title=None,
         )
         fig.update_xaxes(showgrid=True, gridcolor='#eee')
@@ -448,6 +468,8 @@ if 'DATE' in df.columns:
         height=400,
         showlegend=False,
         plot_bgcolor='white',
+        paper_bgcolor='white',
+        font_color='#222',
         hovermode='x unified'
     )
     
@@ -557,6 +579,8 @@ with col_left:
             width=650, height=350,
             showlegend=False,
             plot_bgcolor='white',
+            paper_bgcolor='white',
+            font_color='#222',
             title=None,
         )
         fig.update_xaxes(showgrid=True, gridcolor='#eee')
