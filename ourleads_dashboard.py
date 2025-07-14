@@ -25,19 +25,16 @@ scope = [
 @st.cache_data(ttl=20)
 def get_leads_dataframe():
     try:
-        # Check if credentials are available as environment variable (for production)
         if 'GOOGLE_CREDENTIALS' in os.environ:
             creds_json = os.environ['GOOGLE_CREDENTIALS']
-            # Remove any extra quotes or formatting
             creds_json = creds_json.strip().strip("'").strip('"')
             creds_dict = json.loads(creds_json)
             creds = Credentials.from_service_account_info(creds_dict, scopes=scope)
-            st.success("✅ Using credentials from environment variables")
+            # st.success("✅ Using credentials from environment variables")
         else:
-            # Use local credentials file (for development)
             if os.path.exists('credentials.json'):
                 creds = Credentials.from_service_account_file('credentials.json', scopes=scope)
-                st.success("✅ Using local credentials.json file")
+                # st.success("✅ Using local credentials.json file")
             else:
                 st.error("❌ No credentials found!")
                 st.info("For local development: Add credentials.json file")
@@ -46,15 +43,14 @@ def get_leads_dataframe():
         
         client = gspread.authorize(creds)
         sheet = client.open_by_key(SHEET_ID)
-        worksheet = sheet.sheet1  # Assumes data is in the first sheet
+        worksheet = sheet.sheet1
         data = worksheet.get_all_records()
         df = pd.DataFrame(data)
-        st.success(f"✅ Successfully loaded {len(df)} records from Google Sheets")
+        # st.success(f"✅ Successfully loaded {len(df)} records from Google Sheets")
         return df
     except Exception as e:
         st.error(f"❌ Error connecting to Google Sheets: {str(e)}")
         st.info("Please check your credentials and internet connection.")
-        # Return empty DataFrame to prevent app crash
         return pd.DataFrame()
 
 # --- Auto-refresh logic ---
@@ -104,21 +100,6 @@ with col2:
         "<h1 style='text-align:center; margin-bottom:0; margin-top:0; font-size:2.5rem; font-weight:bold; color:#222;'>Phoenix Leads Dashboard</h1>",
         unsafe_allow_html=True
     )
-
-# Debug section - remove this after fixing the issue
-with st.expander("🔧 Debug Info (Click to expand)"):
-    st.write("**Environment Variables:**")
-    st.write(f"GOOGLE_CREDENTIALS present: {'GOOGLE_CREDENTIALS' in os.environ}")
-    if 'GOOGLE_CREDENTIALS' in os.environ:
-        creds_value = os.environ['GOOGLE_CREDENTIALS']
-        st.write(f"Credentials length: {len(creds_value)} characters")
-        st.write(f"Credentials start: {creds_value[:100]}...")
-    st.write(f"Local credentials.json exists: {os.path.exists('credentials.json')}")
-    st.write(f"Sheet ID: {SHEET_ID}")
-    st.write("**Available environment variables:**")
-    for key, value in os.environ.items():
-        if 'GOOGLE' in key or 'CREDENTIAL' in key:
-            st.write(f"{key}: {str(value)[:50]}...")
 
 # Load data
 df = get_leads_dataframe()
