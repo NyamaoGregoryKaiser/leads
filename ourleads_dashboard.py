@@ -513,14 +513,14 @@ st.markdown("---")
 header_col, filter_col_branch, filter_col_month = st.columns([3, 1, 1])
 with header_col:
     st.subheader("Leads per Day - Time Series", anchor=False)
-# Ensure DATE_parsed is datetime type ONCE at the start of the script
+# Parse DATE_parsed ONCE at the start
 if 'DATE' in df.columns and not pd.api.types.is_datetime64_any_dtype(df['DATE_parsed']):
     df['DATE_parsed'] = pd.to_datetime(df['DATE'], errors='coerce')
 # Branch filter
 with filter_col_branch:
     branches_ts = ['All'] + sorted(df['BRANCH'].unique()) if 'BRANCH' in df.columns else ['All']
     selected_branch_ts = st.selectbox('Branch', branches_ts, key='branch_filter_timeseries')
-# Filter df for selected branch (for month options)
+# Filter for branch
 if selected_branch_ts != 'All' and 'BRANCH' in df.columns:
     df_branch = df[df['BRANCH'] == selected_branch_ts]
 else:
@@ -535,19 +535,16 @@ if 'month_filter_timeseries' in st.session_state:
         st.session_state['month_filter_timeseries'] = 'All'
 with filter_col_month:
     selected_month_ts = st.selectbox('Month', months, key='month_filter_timeseries')
-# Apply both filters conjunctively
-if selected_branch_ts != 'All' and 'BRANCH' in df.columns:
-    df_ts = df[df['BRANCH'] == selected_branch_ts].copy()
-else:
-    df_ts = df.copy()
+# Apply both filters
+# Always apply month filter to branch-filtered DataFrame
+df_ts = df_branch.copy()
 if selected_month_ts != 'All' and 'DATE_parsed' in df_ts.columns:
     df_ts = df_ts[df_ts['DATE_parsed'].dt.strftime('%Y-%m') == selected_month_ts]
-# Now plot ONLY the filtered data
+# Only plot if there is data
 if not df_ts.empty and 'DATE_parsed' in df_ts.columns:
-    df_ts = df_ts.dropna(subset=['DATE_parsed'])
-    # Only group and plot dates from the selected month
     daily_leads = (
-        df_ts.groupby(df_ts['DATE_parsed'].dt.date)
+        df_ts.dropna(subset=['DATE_parsed'])
+        .groupby(df_ts['DATE_parsed'].dt.date)
         .size()
         .reset_index(name='leads_count')
     )
@@ -690,7 +687,7 @@ if not df_ts.empty and 'DATE_parsed' in df_ts.columns:
     '''
     st.markdown(summary_card_html, unsafe_allow_html=True)
 else:
-    st.info('No DATE column found in the data.')
+    st.info('No data for the selected filters.')
 
 st.markdown("---")
 
