@@ -358,7 +358,7 @@ with col_leads:
         plot_bgcolor='white', paper_bgcolor='white',
         font=dict(color='#222', size=14),
         xaxis=dict(
-            title='Team Lead',
+            title=dict(text='Team Lead', font=dict(color='#222', size=16)),
             color='#222',
             linecolor='#222',
             tickfont=dict(color='#222'),
@@ -366,7 +366,7 @@ with col_leads:
             zerolinecolor='#ccc'
         ),
         yaxis=dict(
-            title='Leads',
+            title=dict(text='Leads', font=dict(color='#222', size=16)),
             color='#222',
             linecolor='#222',
             tickfont=dict(color='#222'),
