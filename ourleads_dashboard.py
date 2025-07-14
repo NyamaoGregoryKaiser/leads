@@ -526,16 +526,15 @@ with filter_col_ts:
         selected_branch_ts = st.selectbox('Branch', branches_ts, key='branch_filter_timeseries')
         selected_month_ts = st.selectbox('Month', months, key='month_filter_timeseries')
         st.markdown('</div>', unsafe_allow_html=True)
-# Apply both filters conjunctively
-if selected_branch_ts != 'All' and 'BRANCH' in df.columns:
-    df_ts = df[df['BRANCH'] == selected_branch_ts].copy()
-else:
-    df_ts = df.copy()
-if selected_month_ts != 'All' and 'DATE' in df_ts.columns:
-    # Ensure DATE_parsed is datetime type in df_ts
+# Apply both filters conjunctively and robustly (industrial standard)
+df_ts = df.copy()
+if 'BRANCH' in df_ts.columns and selected_branch_ts != 'All':
+    df_ts = df_ts[df_ts['BRANCH'] == selected_branch_ts]
+if 'DATE' in df_ts.columns:
     if not pd.api.types.is_datetime64_any_dtype(df_ts['DATE_parsed']):
         df_ts['DATE_parsed'] = pd.to_datetime(df_ts['DATE_parsed'], errors='coerce')
-    df_ts = df_ts[df_ts['DATE_parsed'].dt.strftime('%Y-%m') == selected_month_ts]
+    if selected_month_ts != 'All':
+        df_ts = df_ts[df_ts['DATE_parsed'].dt.strftime('%Y-%m') == selected_month_ts]
 if 'DATE' in df_ts.columns:
     # Clean and parse dates
     df_ts['DATE_parsed'] = pd.to_datetime(df_ts['DATE'], errors='coerce')
