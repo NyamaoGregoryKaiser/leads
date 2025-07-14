@@ -544,19 +544,18 @@ if selected_month_ts != 'All' and 'DATE_parsed' in df_ts.columns:
     df_ts = df_ts[df_ts['DATE_parsed'].dt.strftime('%Y-%m') == selected_month_ts]
 # Now plot ONLY the filtered data
 if not df_ts.empty and 'DATE_parsed' in df_ts.columns:
+    df_ts = df_ts.dropna(subset=['DATE_parsed'])
+    # Only group and plot dates from the selected month
     daily_leads = (
-        df_ts.dropna(subset=['DATE_parsed'])
-        .groupby(df_ts['DATE_parsed'].dt.date)
+        df_ts.groupby(df_ts['DATE_parsed'].dt.date)
         .size()
         .reset_index(name='leads_count')
     )
-    daily_leads.columns = ['date', 'leads_count']
-    daily_leads['date'] = pd.to_datetime(daily_leads['date'])
+    daily_leads['date'] = pd.to_datetime(daily_leads['DATE_parsed']) if 'DATE_parsed' in daily_leads.columns else pd.to_datetime(daily_leads['date'])
     daily_leads = daily_leads.sort_values('date')
-
     # Create time series chart using plotly
     import plotly.graph_objects as go
-    import numpy as np
+    from plotly.subplots import make_subplots
     fig = go.Figure()
     # Add line chart
     fig.add_trace(go.Scatter(
@@ -581,8 +580,10 @@ if not df_ts.empty and 'DATE_parsed' in df_ts.columns:
     ))
     # Add trend line (linear regression)
     if len(daily_leads) > 1:
+        import numpy as np
         x = np.arange(len(daily_leads))
         y = daily_leads['leads_count'].values
+        # Fit linear regression
         coef = np.polyfit(x, y, 1)
         trend = np.poly1d(coef)(x)
         fig.add_trace(go.Scatter(
@@ -593,14 +594,7 @@ if not df_ts.empty and 'DATE_parsed' in df_ts.columns:
             line=dict(color='orange', width=2, dash='dash'),
             hoverinfo='skip'
         ))
-    # Set x-axis range to selected month if not 'All'
-    xaxis_range = None
-    if selected_month_ts != 'All':
-        from calendar import monthrange
-        year, month = map(int, selected_month_ts.split('-'))
-        start_date = f'{year}-{month:02d}-01'
-        end_date = f'{year}-{month:02d}-{monthrange(year, month)[1]}'
-        xaxis_range = [start_date, end_date]
+    # Update layout
     fig.update_layout(
         title=None,
         plot_bgcolor='white',
@@ -617,8 +611,7 @@ if not df_ts.empty and 'DATE_parsed' in df_ts.columns:
             color='#222',
             linecolor='#222',
             tickfont=dict(color='#222'),
-            zerolinecolor='#ccc',
-            range=xaxis_range
+            zerolinecolor='#ccc'
         ),
         yaxis=dict(
             title=dict(text='Number of Leads', font=dict(color='#222', size=16)),
