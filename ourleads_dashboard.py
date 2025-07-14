@@ -166,13 +166,14 @@ st.markdown('''
     </style>
 ''', unsafe_allow_html=True)
 
-# Header and filter for summary cards in one row: header left, filter right
-header_col_cards, filter_col_cards = st.columns([3, 1])
-with header_col_cards:
-    st.markdown('<h3 style="margin-bottom:0;">Summary Cards</h3>', unsafe_allow_html=True)
+# Branch filter for summary cards (top-right above cards)
+_, filter_col_cards = st.columns([10, 1])
 with filter_col_cards:
-    branches_cards = ['All'] + sorted(df['BRANCH'].unique()) if 'BRANCH' in df.columns else ['All']
-    selected_branch_cards = st.selectbox('Branch', branches_cards, key='branch_filter_cards')
+    with st.container():
+        st.markdown('<div class="small-filter">', unsafe_allow_html=True)
+        branches_cards = ['All'] + sorted(df['BRANCH'].unique()) if 'BRANCH' in df.columns else ['All']
+        selected_branch_cards = st.selectbox('Filter by Branch (Cards)', branches_cards, key='branch_filter_cards')
+        st.markdown('</div>', unsafe_allow_html=True)
 if selected_branch_cards != 'All' and 'BRANCH' in df.columns:
     df_cards = df[df['BRANCH'] == selected_branch_cards].copy()
 else:
@@ -586,15 +587,16 @@ if 'DATE' in df_ts.columns:
         import numpy as np
         x = np.arange(len(daily_leads))
         y = daily_leads['leads_count'].values
+        # Fit linear regression
         coef = np.polyfit(x, y, 1)
-        trend = coef[0] * x + coef[1]
+        trend = np.poly1d(coef)(x)
         fig.add_trace(go.Scatter(
             x=daily_leads['date'],
             y=trend,
             mode='lines',
             name='Trend',
             line=dict(color='orange', width=2, dash='dash'),
-            hoverinfo='skip',
+            hoverinfo='skip'
         ))
     # Update layout
     fig.update_layout(
