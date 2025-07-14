@@ -153,21 +153,21 @@ else:
     st.stop()
     df['DATE_parsed'] = pd.NaT
 
-# Add custom CSS for small selectboxes
+# Update custom CSS for wider selectboxes
 st.markdown('''
     <style>
     .small-filter .stSelectbox > div[data-baseweb="select"] {
         font-size: 12px !important;
         min-height: 28px !important;
         height: 28px !important;
-        max-width: 180px;
+        max-width: 360px;
     }
     .small-filter label { font-size: 12px !important; }
     </style>
 ''', unsafe_allow_html=True)
 
-# Branch filter for summary cards (top-left above cards)
-filter_col_cards, _ = st.columns([1, 10])
+# Branch filter for summary cards (top-right above cards)
+_, filter_col_cards = st.columns([10, 1])
 with filter_col_cards:
     with st.container():
         st.markdown('<div class="small-filter">', unsafe_allow_html=True)
@@ -349,8 +349,8 @@ with col_branch:
         st.info('BRANCH or SOURCE OF LEAD GENERATION column not found in the data.')
 with col_source:
     st.subheader("Leads per Source")
-    # Branch filter for Leads per Source (top-left above plot)
-    filter_col_source, _ = st.columns([1, 10])
+    # Branch filter for Leads per Source (top-right above plot)
+    _, filter_col_source = st.columns([10, 1])
     with filter_col_source:
         with st.container():
             st.markdown('<div class="small-filter">', unsafe_allow_html=True)
@@ -511,8 +511,8 @@ st.markdown("---")
 
 # --- Time Series Chart ---
 st.subheader("Leads per Day - Time Series")
-# Branch filter for Time Series (top-left above plot)
-filter_col_ts, _ = st.columns([1, 10])
+# Branch filter for Time Series (top-right above plot)
+_, filter_col_ts = st.columns([10, 1])
 with filter_col_ts:
     with st.container():
         st.markdown('<div class="small-filter">', unsafe_allow_html=True)
