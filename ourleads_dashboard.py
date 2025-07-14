@@ -162,7 +162,7 @@ leads_today_delta = leads_today - leads_yesterday
 today_arrow = f'<span style="color:#2ECC40;font-size:32px;vertical-align:middle;">&#9650;</span>' if leads_today_delta > 0 else (f'<span style="color:#FF4136;font-size:32px;vertical-align:middle;">&#9660;</span>' if leads_today_delta < 0 else '')
 if leads_yesterday > 0:
     today_pct = (leads_today_delta / leads_yesterday) * 100
-    today_pct_str = f'<span style="color:{"#2ECC40" if leads_today_delta > 0 else "#FF4136"}; font-size:20px; font-weight:bold;">{abs(today_pct):.1f}%</span>'
+    today_pct_str = f'<span style="color:{"#2ECC40" if leads_today_delta > 0 else "#FF4136"}; font-size:14px; font-weight:bold;">{abs(today_pct):.1f}%</span>'
 else:
     today_pct_str = ''
 
@@ -186,7 +186,7 @@ week_arrow = (
 )
 if leads_prev_week > 0:
     week_pct = (week_delta / leads_prev_week) * 100
-    week_pct_str = f'<span style="color:{"#2ECC40" if week_delta > 0 else "#FF4136"}; font-size:20px; font-weight:bold;">{abs(week_pct):.1f}%</span>'
+    week_pct_str = f'<span style="color:{"#2ECC40" if week_delta > 0 else "#FF4136"}; font-size:14px; font-weight:bold;">{abs(week_pct):.1f}%</span>'
 else:
     week_pct_str = ''
 
@@ -208,7 +208,7 @@ month_arrow = (
 )
 if leads_prev_month > 0:
     month_pct = (month_delta / leads_prev_month) * 100
-    month_pct_str = f'<span style="color:{"#2ECC40" if month_delta > 0 else "#FF4136"}; font-size:20px; font-weight:bold;">{abs(month_pct):.1f}%</span>'
+    month_pct_str = f'<span style="color:{"#2ECC40" if month_delta > 0 else "#FF4136"}; font-size:14px; font-weight:bold;">{abs(month_pct):.1f}%</span>'
 else:
     month_pct_str = ''
 # --- Cards ---
