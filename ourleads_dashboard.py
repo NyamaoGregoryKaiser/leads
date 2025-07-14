@@ -165,29 +165,42 @@ if leads_yesterday > 0:
     today_pct_str = f'<span style="color:{"#2ECC40" if leads_today_delta > 0 else "#FF4136"}; font-size:20px; font-weight:bold;">{abs(today_pct):.1f}%</span>'
 else:
     today_pct_str = ''
-week_start = today - pd.Timedelta(days=today.weekday())
-leads_week = df[(df['DATE_parsed'] >= week_start) & (df['DATE_parsed'] <= today)].shape[0]
-month_start = today.replace(day=1)
-leads_month = df[(df['DATE_parsed'] >= month_start) & (df['DATE_parsed'] <= today)].shape[0]
 
-# Calculate previous week and month for comparison
+# Calculate the start of this week and today
+week_start = today - pd.Timedelta(days=today.weekday())
+days_so_far = (today - week_start).days + 1  # +1 to include today
+
+# This week: from week_start to today
+leads_week = df[(df['DATE_parsed'] >= week_start) & (df['DATE_parsed'] <= today)].shape[0]
+
+# Previous week: same number of days (e.g., Mon–Wed last week if today is Wed)
 prev_week_start = week_start - pd.Timedelta(days=7)
-prev_week_end = week_start - pd.Timedelta(days=1)
+prev_week_end = prev_week_start + pd.Timedelta(days=days_so_far - 1)
 leads_prev_week = df[(df['DATE_parsed'] >= prev_week_start) & (df['DATE_parsed'] <= prev_week_end)].shape[0]
-prev_month = (month_start - pd.Timedelta(days=1)).replace(day=1)
-prev_month_end = month_start - pd.Timedelta(days=1)
-leads_prev_month = df[(df['DATE_parsed'] >= prev_month) & (df['DATE_parsed'] <= prev_month_end)].shape[0]
-# Calculate deltas and arrows
+
+# Calculate delta and percentage
 week_delta = leads_week - leads_prev_week
-month_delta = leads_month - leads_prev_month
-week_arrow = f'<span style="color:#2ECC40;font-size:32px;vertical-align:middle;">&#9650;</span>' if week_delta > 0 else (f'<span style="color:#FF4136;font-size:32px;vertical-align:middle;">&#9660;</span>' if week_delta < 0 else '')
-month_arrow = f'<span style="color:#2ECC40;font-size:32px;vertical-align:middle;">&#9650;</span>' if month_delta > 0 else (f'<span style="color:#FF4136;font-size:32px;vertical-align:middle;">&#9660;</span>' if month_delta < 0 else '')
-# Calculate percentage changes
+week_arrow = (
+    f'<span style="color:#2ECC40;font-size:32px;vertical-align:middle;">&#9650;</span>' if week_delta > 0 else
+    f'<span style="color:#FF4136;font-size:32px;vertical-align:middle;">&#9660;</span>' if week_delta < 0 else ''
+)
 if leads_prev_week > 0:
     week_pct = (week_delta / leads_prev_week) * 100
     week_pct_str = f'<span style="color:{"#2ECC40" if week_delta > 0 else "#FF4136"}; font-size:20px; font-weight:bold;">{abs(week_pct):.1f}%</span>'
 else:
     week_pct_str = ''
+
+month_start = today.replace(day=1)
+leads_month = df[(df['DATE_parsed'] >= month_start) & (df['DATE_parsed'] <= today)].shape[0]
+
+# Calculate previous week and month for comparison
+prev_month = (month_start - pd.Timedelta(days=1)).replace(day=1)
+prev_month_end = month_start - pd.Timedelta(days=1)
+leads_prev_month = df[(df['DATE_parsed'] >= prev_month) & (df['DATE_parsed'] <= prev_month_end)].shape[0]
+# Calculate deltas and arrows
+month_delta = leads_month - leads_prev_month
+month_arrow = f'<span style="color:#2ECC40;font-size:32px;vertical-align:middle;">&#9650;</span>' if month_delta > 0 else (f'<span style="color:#FF4136;font-size:32px;vertical-align:middle;">&#9660;</span>' if month_delta < 0 else '')
+# Calculate percentage changes
 if leads_prev_month > 0:
     month_pct = (month_delta / leads_prev_month) * 100
     month_pct_str = f'<span style="color:{"#2ECC40" if month_delta > 0 else "#FF4136"}; font-size:20px; font-weight:bold;">{abs(month_pct):.1f}%</span>'
