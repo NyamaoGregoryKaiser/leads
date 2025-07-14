@@ -31,14 +31,21 @@ st.markdown(
 )
 
 import matplotlib as mpl
-mpl.rcParams['figure.facecolor'] = 'white'
-mpl.rcParams['axes.facecolor'] = 'white'
-mpl.rcParams['savefig.facecolor'] = 'white'
-mpl.rcParams['axes.edgecolor'] = '#222'
-mpl.rcParams['axes.labelcolor'] = '#222'
-mpl.rcParams['xtick.color'] = '#222'
-mpl.rcParams['ytick.color'] = '#222'
-mpl.rcParams['text.color'] = '#222'
+mpl.rcParams.update({
+    'figure.facecolor': 'white',
+    'axes.facecolor': 'white',
+    'savefig.facecolor': 'white',
+    'axes.edgecolor': '#222',
+    'axes.labelcolor': '#222',
+    'xtick.color': '#222',
+    'ytick.color': '#222',
+    'text.color': '#222',
+    'axes.titlecolor': '#222',
+    'grid.color': '#ccc',
+    'axes.grid': True,
+    'axes.axisbelow': True,
+    'axes.prop_cycle': mpl.cycler(color=['#0074D9', '#FF4136', '#2ECC40', '#FF851B', '#B10DC9'])
+})
 
 st.set_page_config(page_title="Our Leads Dashboard", layout="wide")
 
@@ -317,8 +324,24 @@ with col_source:
     bar_fig = go.Figure()
     bar_fig.add_bar(x=source_counts.index, y=source_counts.values, marker_color="#0074D9")
     bar_fig.update_layout(
-        plot_bgcolor='white', paper_bgcolor='white', font_color='#222',
-        xaxis_title='Source', yaxis_title='Leads',
+        plot_bgcolor='white', paper_bgcolor='white',
+        font=dict(color='#222', size=14),
+        xaxis=dict(
+            title='Source',
+            color='#222',
+            linecolor='#222',
+            tickfont=dict(color='#222'),
+            gridcolor='#ccc',
+            zerolinecolor='#ccc'
+        ),
+        yaxis=dict(
+            title='Leads',
+            color='#222',
+            linecolor='#222',
+            tickfont=dict(color='#222'),
+            gridcolor='#ccc',
+            zerolinecolor='#ccc'
+        ),
         margin=dict(l=20, r=20, t=30, b=40),
         showlegend=False
     )
@@ -332,8 +355,24 @@ with col_leads:
     bar_fig2 = go.Figure()
     bar_fig2.add_bar(x=team_lead_counts.index, y=team_lead_counts.values, marker_color="#0074D9")
     bar_fig2.update_layout(
-        plot_bgcolor='white', paper_bgcolor='white', font_color='#222',
-        xaxis_title='Team Lead', yaxis_title='Leads',
+        plot_bgcolor='white', paper_bgcolor='white',
+        font=dict(color='#222', size=14),
+        xaxis=dict(
+            title='Team Lead',
+            color='#222',
+            linecolor='#222',
+            tickfont=dict(color='#222'),
+            gridcolor='#ccc',
+            zerolinecolor='#ccc'
+        ),
+        yaxis=dict(
+            title='Leads',
+            color='#222',
+            linecolor='#222',
+            tickfont=dict(color='#222'),
+            gridcolor='#ccc',
+            zerolinecolor='#ccc'
+        ),
         margin=dict(l=20, r=20, t=30, b=40),
         showlegend=False
     )
@@ -392,13 +431,29 @@ with col_conv:
         fig.update_layout(
             xaxis_title='Conversion Ratio (%)',
             yaxis_title='Team Leader',
-            xaxis=dict(range=[0, max(15, conversion_perc.max() + 2)], tickformat='.0f'),
+            xaxis=dict(
+                range=[0, max(15, conversion_perc.max() + 2)],
+                tickformat='.0f',
+                color='#222',
+                linecolor='#222',
+                tickfont=dict(color='#222'),
+                gridcolor='#ccc',
+                zerolinecolor='#ccc'
+            ),
+            yaxis=dict(
+                autorange="reversed",
+                color='#222',
+                linecolor='#222',
+                tickfont=dict(color='#222'),
+                gridcolor='#ccc',
+                zerolinecolor='#ccc'
+            ),
             margin=dict(l=20, r=20, t=40, b=40),
             width=650, height=350,
             showlegend=False,
             plot_bgcolor='white',
             paper_bgcolor='white',
-            font_color='#222',
+            font=dict(color='#222', size=14),
             title=None,
         )
         fig.update_xaxes(showgrid=True, gridcolor='#eee')
@@ -469,21 +524,26 @@ if 'DATE' in df.columns:
         showlegend=False,
         plot_bgcolor='white',
         paper_bgcolor='white',
-        font_color='#222',
-        hovermode='x unified'
-    )
-    
-    # Update axes
-    fig.update_xaxes(
-        showgrid=True, 
-        gridcolor='#eee',
-        tickformat='%b %d, %Y'
-    )
-    fig.update_yaxes(
-        showgrid=True, 
-        gridcolor='#eee',
-        zeroline=True,
-        zerolinecolor='#ccc'
+        font=dict(color='#222', size=14),
+        hovermode='x unified',
+        xaxis=dict(
+            showgrid=True,
+            gridcolor='#eee',
+            tickformat='%b %d, %Y',
+            color='#222',
+            linecolor='#222',
+            tickfont=dict(color='#222'),
+            zerolinecolor='#ccc'
+        ),
+        yaxis=dict(
+            showgrid=True,
+            gridcolor='#eee',
+            zeroline=True,
+            zerolinecolor='#ccc',
+            color='#222',
+            linecolor='#222',
+            tickfont=dict(color='#222')
+        )
     )
     
     st.plotly_chart(fig, use_container_width=True)
@@ -580,11 +640,24 @@ with col_left:
             showlegend=False,
             plot_bgcolor='white',
             paper_bgcolor='white',
-            font_color='#222',
+            font=dict(color='#222', size=14),
             title=None,
+            xaxis=dict(
+                color='#222',
+                linecolor='#222',
+                tickfont=dict(color='#222'),
+                gridcolor='#ccc',
+                zerolinecolor='#ccc',
+            ),
+            yaxis=dict(
+                autorange="reversed",
+                color='#222',
+                linecolor='#222',
+                tickfont=dict(color='#222'),
+                gridcolor='#ccc',
+                zerolinecolor='#ccc',
+            ),
         )
-        fig.update_xaxes(showgrid=True, gridcolor='#eee')
-        fig.update_yaxes(autorange="reversed")
         st.markdown('<div style="overflow-x:auto;width:100%">', unsafe_allow_html=True)
         st.plotly_chart(fig, use_container_width=False)
         st.markdown('</div>', unsafe_allow_html=True)
