@@ -8,6 +8,8 @@ import matplotlib.pyplot as plt
 import plotly.graph_objects as go
 import numpy as np
 from PIL import Image
+import json
+import os
 
 st.set_page_config(page_title="Our Leads Dashboard", layout="wide")
 
@@ -22,13 +24,43 @@ scope = [
 
 @st.cache_data(ttl=20)
 def get_leads_dataframe():
-    creds = ServiceAccountCredentials.from_json_keyfile_name('credentials.json', scope)
-    client = gspread.authorize(creds)
-    sheet = client.open_by_key(SHEET_ID)
-    worksheet = sheet.sheet1  # Assumes data is in the first sheet
-    data = worksheet.get_all_records()
-    df = pd.DataFrame(data)
-    return df
+    try:
+        # Check if credentials are available as environment variable (for production)
+        if 'GOOGLE_CREDENTIALS' in os.environ:
+            try:
+                creds_json = os.environ['GOOGLE_CREDENTIALS']
+                # Remove any extra quotes or formatting
+                creds_json = creds_json.strip().strip("'").strip('"')
+                creds_dict = json.loads(creds_json)
+                creds = ServiceAccountCredentials.from_service_account_info(creds_dict, scope)
+                st.success("✅ Using credentials from environment variables")
+            except json.JSONDecodeError as e:
+                st.error(f"❌ Invalid JSON in GOOGLE_CREDENTIALS: {e}")
+                st.info("Please check your Streamlit Cloud secrets configuration.")
+                return pd.DataFrame()
+        else:
+            # Use local credentials file (for development)
+            if os.path.exists('credentials.json'):
+                creds = ServiceAccountCredentials.from_json_keyfile_name('credentials.json', scope)
+                st.success("✅ Using local credentials.json file")
+            else:
+                st.error("❌ No credentials found!")
+                st.info("For local development: Add credentials.json file")
+                st.info("For Streamlit Cloud: Add GOOGLE_CREDENTIALS to secrets")
+                return pd.DataFrame()
+        
+        client = gspread.authorize(creds)
+        sheet = client.open_by_key(SHEET_ID)
+        worksheet = sheet.sheet1  # Assumes data is in the first sheet
+        data = worksheet.get_all_records()
+        df = pd.DataFrame(data)
+        st.success(f"✅ Successfully loaded {len(df)} records from Google Sheets")
+        return df
+    except Exception as e:
+        st.error(f"❌ Error connecting to Google Sheets: {str(e)}")
+        st.info("Please check your credentials and internet connection.")
+        # Return empty DataFrame to prevent app crash
+        return pd.DataFrame()
 
 # --- Auto-refresh logic ---
 if 'last_refresh' not in st.session_state:
@@ -43,7 +75,7 @@ if 'last_autorefresh' not in st.session_state:
     st.session_state['last_autorefresh'] = time.time()
 if time.time() - st.session_state['last_autorefresh'] > 20:
     st.session_state['last_autorefresh'] = time.time()
-    st.experimental_rerun()
+    st.rerun()
 
 st.markdown("""
     <style>
@@ -78,13 +110,35 @@ with col2:
         unsafe_allow_html=True
     )
 
+# Debug section - remove this after fixing the issue
+with st.expander("🔧 Debug Info (Click to expand)"):
+    st.write("**Environment Variables:**")
+    st.write(f"GOOGLE_CREDENTIALS present: {'GOOGLE_CREDENTIALS' in os.environ}")
+    if 'GOOGLE_CREDENTIALS' in os.environ:
+        creds_value = os.environ['GOOGLE_CREDENTIALS']
+        st.write(f"Credentials length: {len(creds_value)} characters")
+        st.write(f"Credentials start: {creds_value[:100]}...")
+    st.write(f"Local credentials.json exists: {os.path.exists('credentials.json')}")
+    st.write(f"Sheet ID: {SHEET_ID}")
+    st.write("**Available environment variables:**")
+    for key, value in os.environ.items():
+        if 'GOOGLE' in key or 'CREDENTIAL' in key:
+            st.write(f"{key}: {str(value)[:50]}...")
+
 # Load data
 df = get_leads_dataframe()
+
+# Check if data was loaded successfully
+if df.empty:
+    st.error("Unable to load data from Google Sheets. Please check your credentials and try again.")
+    st.stop()
 
 # Parse dates
 if 'DATE' in df.columns:
     df['DATE_parsed'] = pd.to_datetime(df['DATE'], errors='coerce')
 else:
+    st.error("No DATE column found in the data. Please check your Google Sheet structure.")
+    st.stop()
     df['DATE_parsed'] = pd.NaT
 
 today = pd.Timestamp(datetime.now().date())
