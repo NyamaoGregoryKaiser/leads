@@ -517,16 +517,14 @@ if 'DATE' in df.columns:
     # Update layout
     fig.update_layout(
         title=None,
-        xaxis_title='Date',
-        yaxis_title='Number of Leads',
-        margin=dict(l=20, r=20, t=40, b=40),
-        height=400,
-        showlegend=False,
         plot_bgcolor='white',
         paper_bgcolor='white',
         font=dict(color='#222', size=14),
         hovermode='x unified',
+        margin=dict(l=20, r=20, t=40, b=40),
+        height=400,
         xaxis=dict(
+            title=dict(text='Date', font=dict(color='#222', size=16)),
             showgrid=True,
             gridcolor='#eee',
             tickformat='%b %d, %Y',
@@ -536,6 +534,7 @@ if 'DATE' in df.columns:
             zerolinecolor='#ccc'
         ),
         yaxis=dict(
+            title=dict(text='Number of Leads', font=dict(color='#222', size=16)),
             showgrid=True,
             gridcolor='#eee',
             zeroline=True,
@@ -633,16 +632,8 @@ with col_left:
             hovertemplate='%{y}: %{x} agents<extra></extra>'
         )
         fig.update_layout(
-            xaxis_title='Number of Agents',
-            yaxis_title='Branch',
-            margin=dict(l=20, r=20, t=30, b=40),
-            width=650, height=350,
-            showlegend=False,
-            plot_bgcolor='white',
-            paper_bgcolor='white',
-            font=dict(color='#222', size=14),
-            title=None,
             xaxis=dict(
+                title=dict(text='Number of Agents', font=dict(color='#222', size=16)),
                 color='#222',
                 linecolor='#222',
                 tickfont=dict(color='#222'),
@@ -650,6 +641,7 @@ with col_left:
                 zerolinecolor='#ccc',
             ),
             yaxis=dict(
+                title=dict(text='Branch', font=dict(color='#222', size=16)),
                 autorange="reversed",
                 color='#222',
                 linecolor='#222',
@@ -657,6 +649,13 @@ with col_left:
                 gridcolor='#ccc',
                 zerolinecolor='#ccc',
             ),
+            margin=dict(l=20, r=20, t=30, b=40),
+            width=650, height=350,
+            showlegend=False,
+            plot_bgcolor='white',
+            paper_bgcolor='white',
+            font=dict(color='#222', size=14),
+            title=None,
         )
         st.markdown('<div style="overflow-x:auto;width:100%">', unsafe_allow_html=True)
         st.plotly_chart(fig, use_container_width=False)
