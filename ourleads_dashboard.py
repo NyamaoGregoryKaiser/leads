@@ -510,28 +510,26 @@ with col_conv:
 st.markdown("---")
 
 # --- Time Series Chart ---
-# Header and filters in one row: header left, filters right
 header_col, filter_col_branch, filter_col_month = st.columns([3, 1, 1])
 with header_col:
     st.subheader("Leads per Day - Time Series", anchor=False)
-# Ensure DATE_parsed is datetime type
+# Ensure DATE_parsed is datetime type ONCE at the start of the script
 if 'DATE' in df.columns and not pd.api.types.is_datetime64_any_dtype(df['DATE_parsed']):
-    df['DATE_parsed'] = pd.to_datetime(df['DATE_parsed'], errors='coerce')
+    df['DATE_parsed'] = pd.to_datetime(df['DATE'], errors='coerce')
 # Branch filter
 with filter_col_branch:
     branches_ts = ['All'] + sorted(df['BRANCH'].unique()) if 'BRANCH' in df.columns else ['All']
     selected_branch_ts = st.selectbox('Branch', branches_ts, key='branch_filter_timeseries')
 # Filter df for selected branch (for month options)
 if selected_branch_ts != 'All' and 'BRANCH' in df.columns:
-    df_branch = df[df['BRANCH'] == selected_branch_ts].copy()
+    df_branch = df[df['BRANCH'] == selected_branch_ts]
 else:
-    df_branch = df.copy()
+    df_branch = df
 # Month filter options based on branch
-if 'DATE' in df_branch.columns:
+if 'DATE_parsed' in df_branch.columns:
     months = ['All'] + sorted(df_branch['DATE_parsed'].dropna().dt.strftime('%Y-%m').unique())
 else:
     months = ['All']
-# If the selected month is not in the available months, reset to 'All'
 if 'month_filter_timeseries' in st.session_state:
     if st.session_state['month_filter_timeseries'] not in months:
         st.session_state['month_filter_timeseries'] = 'All'
@@ -542,20 +540,17 @@ if selected_branch_ts != 'All' and 'BRANCH' in df.columns:
     df_ts = df[df['BRANCH'] == selected_branch_ts].copy()
 else:
     df_ts = df.copy()
-if selected_month_ts != 'All' and 'DATE' in df_ts.columns:
-    if not pd.api.types.is_datetime64_any_dtype(df_ts['DATE_parsed']):
-        df_ts['DATE_parsed'] = pd.to_datetime(df_ts['DATE_parsed'], errors='coerce')
+if selected_month_ts != 'All' and 'DATE_parsed' in df_ts.columns:
     df_ts = df_ts[df_ts['DATE_parsed'].dt.strftime('%Y-%m') == selected_month_ts]
-if 'DATE' in df_ts.columns:
-    # Clean and parse dates
-    df_ts['DATE_parsed'] = pd.to_datetime(df_ts['DATE'], errors='coerce')
-    # Remove invalid dates
-    df_ts = df_ts.dropna(subset=['DATE_parsed'])
-    # Count leads per day
-    daily_leads = df_ts.groupby(df_ts['DATE_parsed'].dt.date).size().reset_index()
-    daily_leads.columns = ['date', 'leads_count']
-    daily_leads['date'] = pd.to_datetime(daily_leads['date'])
-    # Sort by date
+# Now plot ONLY the filtered data
+if not df_ts.empty and 'DATE_parsed' in df_ts.columns:
+    daily_leads = (
+        df_ts.dropna(subset=['DATE_parsed'])
+        .groupby(df_ts['DATE_parsed'].dt.date)
+        .size()
+        .reset_index(name='leads_count')
+    )
+    daily_leads['date'] = pd.to_datetime(daily_leads['DATE_parsed']) if 'DATE_parsed' in daily_leads.columns else pd.to_datetime(daily_leads['date'])
     daily_leads = daily_leads.sort_values('date')
     # Create time series chart using plotly
     import plotly.graph_objects as go
