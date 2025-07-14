@@ -153,9 +153,27 @@ else:
     st.stop()
     df['DATE_parsed'] = pd.NaT
 
-# Branch filter for summary cards
-branches_cards = ['All'] + sorted(df['BRANCH'].unique()) if 'BRANCH' in df.columns else ['All']
-selected_branch_cards = st.selectbox('Filter by Branch (Cards)', branches_cards, key='branch_filter_cards')
+# Add custom CSS for small selectboxes
+st.markdown('''
+    <style>
+    .small-filter .stSelectbox > div[data-baseweb="select"] {
+        font-size: 12px !important;
+        min-height: 28px !important;
+        height: 28px !important;
+        max-width: 180px;
+    }
+    .small-filter label { font-size: 12px !important; }
+    </style>
+''', unsafe_allow_html=True)
+
+# Branch filter for summary cards (top-left above cards)
+filter_col_cards, _ = st.columns([1, 10])
+with filter_col_cards:
+    with st.container():
+        st.markdown('<div class="small-filter">', unsafe_allow_html=True)
+        branches_cards = ['All'] + sorted(df['BRANCH'].unique()) if 'BRANCH' in df.columns else ['All']
+        selected_branch_cards = st.selectbox('Filter by Branch (Cards)', branches_cards, key='branch_filter_cards')
+        st.markdown('</div>', unsafe_allow_html=True)
 if selected_branch_cards != 'All' and 'BRANCH' in df.columns:
     df_cards = df[df['BRANCH'] == selected_branch_cards].copy()
 else:
@@ -331,9 +349,14 @@ with col_branch:
         st.info('BRANCH or SOURCE OF LEAD GENERATION column not found in the data.')
 with col_source:
     st.subheader("Leads per Source")
-    # Branch filter for Leads per Source
-    branches = ['All'] + sorted(df['BRANCH'].unique()) if 'BRANCH' in df.columns else ['All']
-    selected_branch = st.selectbox('Filter by Branch', branches, key='branch_filter_source')
+    # Branch filter for Leads per Source (top-left above plot)
+    filter_col_source, _ = st.columns([1, 10])
+    with filter_col_source:
+        with st.container():
+            st.markdown('<div class="small-filter">', unsafe_allow_html=True)
+            branches = ['All'] + sorted(df['BRANCH'].unique()) if 'BRANCH' in df.columns else ['All']
+            selected_branch = st.selectbox('Filter by Branch', branches, key='branch_filter_source')
+            st.markdown('</div>', unsafe_allow_html=True)
     if selected_branch != 'All' and 'BRANCH' in df.columns:
         df_source = df[df['BRANCH'] == selected_branch]
     else:
@@ -488,9 +511,14 @@ st.markdown("---")
 
 # --- Time Series Chart ---
 st.subheader("Leads per Day - Time Series")
-# Branch filter for Time Series
-branches_ts = ['All'] + sorted(df['BRANCH'].unique()) if 'BRANCH' in df.columns else ['All']
-selected_branch_ts = st.selectbox('Filter by Branch (Time Series)', branches_ts, key='branch_filter_timeseries')
+# Branch filter for Time Series (top-left above plot)
+filter_col_ts, _ = st.columns([1, 10])
+with filter_col_ts:
+    with st.container():
+        st.markdown('<div class="small-filter">', unsafe_allow_html=True)
+        branches_ts = ['All'] + sorted(df['BRANCH'].unique()) if 'BRANCH' in df.columns else ['All']
+        selected_branch_ts = st.selectbox('Filter by Branch (Time Series)', branches_ts, key='branch_filter_timeseries')
+        st.markdown('</div>', unsafe_allow_html=True)
 if selected_branch_ts != 'All' and 'BRANCH' in df.columns:
     df_ts = df[df['BRANCH'] == selected_branch_ts].copy()
 else:
