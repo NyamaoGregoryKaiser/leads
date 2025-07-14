@@ -494,28 +494,28 @@ st.markdown("---")
 
 # --- Time Series Chart ---
 st.subheader("Leads per Day - Time Series")
-if 'DATE' in df.columns:
-    # Clean and parse dates
+# Branch filter for Time Series
+branches_ts = ['All'] + sorted(df['BRANCH'].unique()) if 'BRANCH' in df.columns else ['All']
+selected_branch_ts = st.selectbox('Filter by Branch (Time Series)', branches_ts, key='branch_filter_timeseries')
+if selected_branch_ts != 'All' and 'BRANCH' in df.columns:
+    df_ts = df[df['BRANCH'] == selected_branch_ts].copy()
+else:
     df_ts = df.copy()
+if 'DATE' in df_ts.columns:
+    # Clean and parse dates
     df_ts['DATE_parsed'] = pd.to_datetime(df_ts['DATE'], errors='coerce')
-    
     # Remove invalid dates
     df_ts = df_ts.dropna(subset=['DATE_parsed'])
-    
     # Count leads per day
     daily_leads = df_ts.groupby(df_ts['DATE_parsed'].dt.date).size().reset_index()
     daily_leads.columns = ['date', 'leads_count']
     daily_leads['date'] = pd.to_datetime(daily_leads['date'])
-    
     # Sort by date
     daily_leads = daily_leads.sort_values('date')
-    
     # Create time series chart using plotly
     import plotly.graph_objects as go
     from plotly.subplots import make_subplots
-    
     fig = go.Figure()
-    
     # Add line chart
     fig.add_trace(go.Scatter(
         x=daily_leads['date'],
@@ -526,7 +526,6 @@ if 'DATE' in df.columns:
         marker=dict(size=6, color='#0074D9'),
         hovertemplate='Date: %{x}<br>Leads: %{y}<extra></extra>'
     ))
-    
     # Add area fill
     fig.add_trace(go.Scatter(
         x=daily_leads['date'],
@@ -538,7 +537,6 @@ if 'DATE' in df.columns:
         showlegend=False,
         hovertemplate='Date: %{x}<br>Leads: %{y}<extra></extra>'
     ))
-    
     # Update layout
     fig.update_layout(
         title=None,
@@ -569,9 +567,7 @@ if 'DATE' in df.columns:
             tickfont=dict(color='#222')
         )
     )
-    
     st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False, 'scrollZoom': True})
-    
     # Add summary statistics with responsive grid
     st.markdown('''
         <style>
@@ -636,7 +632,6 @@ if 'DATE' in df.columns:
     </div>
     '''
     st.markdown(summary_card_html, unsafe_allow_html=True)
-        
 else:
     st.info('No DATE column found in the data.')
 
