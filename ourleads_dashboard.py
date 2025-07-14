@@ -320,9 +320,12 @@ st.markdown(card_html, unsafe_allow_html=True)
 
 st.markdown("---")
 
-# Convert all columns to string to avoid ArrowTypeError
-if not df.empty:
-    df = df.astype(str)
+# Remove or comment out the global conversion to string
+# if not df.empty:
+#     df = df.astype(str)
+# If you need to display a table as strings, use:
+# display_df = df.astype(str)
+# st.dataframe(display_df)
 # --- Table ---
 
 # --- Counts ---
