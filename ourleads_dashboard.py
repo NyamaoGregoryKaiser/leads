@@ -511,26 +511,44 @@ st.markdown("---")
 
 # --- Time Series Chart ---
 st.subheader("Leads per Day - Time Series")
-# Combined Branch and Month filters for Time Series (single row, side by side)
+# Collaborative Branch and Month filters for Time Series (single row, side by side)
 filter_col_branch, filter_col_month, _ = st.columns([1, 1, 6])
+
+# Ensure DATE_parsed is datetime type
+if 'DATE' in df.columns and not pd.api.types.is_datetime64_any_dtype(df['DATE_parsed']):
+    df['DATE_parsed'] = pd.to_datetime(df['DATE_parsed'], errors='coerce')
+
+# Branch filter
 with filter_col_branch:
     branches_ts = ['All'] + sorted(df['BRANCH'].unique()) if 'BRANCH' in df.columns else ['All']
     selected_branch_ts = st.selectbox('Branch', branches_ts, key='branch_filter_timeseries')
+
+# Filter df for selected branch (for month options)
+if selected_branch_ts != 'All' and 'BRANCH' in df.columns:
+    df_branch = df[df['BRANCH'] == selected_branch_ts].copy()
+else:
+    df_branch = df.copy()
+
+# Month filter options based on branch
+if 'DATE' in df_branch.columns:
+    months = ['All'] + sorted(df_branch['DATE_parsed'].dropna().dt.strftime('%Y-%m').unique())
+else:
+    months = ['All']
+
+# If the selected month is not in the available months, reset to 'All'
+if 'month_filter_timeseries' in st.session_state:
+    if st.session_state['month_filter_timeseries'] not in months:
+        st.session_state['month_filter_timeseries'] = 'All'
+
 with filter_col_month:
-    # Ensure DATE_parsed is datetime type
-    if 'DATE' in df.columns and not pd.api.types.is_datetime64_any_dtype(df['DATE_parsed']):
-        df['DATE_parsed'] = pd.to_datetime(df['DATE_parsed'], errors='coerce')
-    months = (
-        ['All'] + sorted(df['DATE_parsed'].dropna().dt.strftime('%Y-%m').unique())
-    ) if 'DATE' in df.columns else ['All']
     selected_month_ts = st.selectbox('Month', months, key='month_filter_timeseries')
+
 # Apply both filters conjunctively
 if selected_branch_ts != 'All' and 'BRANCH' in df.columns:
     df_ts = df[df['BRANCH'] == selected_branch_ts].copy()
 else:
     df_ts = df.copy()
 if selected_month_ts != 'All' and 'DATE' in df_ts.columns:
-    # Ensure DATE_parsed is datetime type in df_ts
     if not pd.api.types.is_datetime64_any_dtype(df_ts['DATE_parsed']):
         df_ts['DATE_parsed'] = pd.to_datetime(df_ts['DATE_parsed'], errors='coerce')
     df_ts = df_ts[df_ts['DATE_parsed'].dt.strftime('%Y-%m') == selected_month_ts]
