@@ -429,9 +429,8 @@ with col_conv:
             hovertemplate='%{y}: %{x:.1f}%<extra></extra>'
         )
         fig.update_layout(
-            xaxis_title='Conversion Ratio (%)',
-            yaxis_title='Team Leader',
             xaxis=dict(
+                title=dict(text='Conversion Ratio (%)', font=dict(color='#222', size=16)),
                 range=[0, max(15, conversion_perc.max() + 2)],
                 tickformat='.0f',
                 color='#222',
@@ -441,6 +440,7 @@ with col_conv:
                 zerolinecolor='#ccc'
             ),
             yaxis=dict(
+                title=dict(text='Team Leader', font=dict(color='#222', size=16)),
                 autorange="reversed",
                 color='#222',
                 linecolor='#222',
