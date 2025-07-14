@@ -550,11 +550,12 @@ if not df_ts.empty and 'DATE_parsed' in df_ts.columns:
         .size()
         .reset_index(name='leads_count')
     )
-    daily_leads['date'] = pd.to_datetime(daily_leads['DATE_parsed']) if 'DATE_parsed' in daily_leads.columns else pd.to_datetime(daily_leads['date'])
+    daily_leads['date'] = pd.to_datetime(daily_leads['date'])
     daily_leads = daily_leads.sort_values('date')
+
     # Create time series chart using plotly
     import plotly.graph_objects as go
-    from plotly.subplots import make_subplots
+    import numpy as np
     fig = go.Figure()
     # Add line chart
     fig.add_trace(go.Scatter(
@@ -579,10 +580,8 @@ if not df_ts.empty and 'DATE_parsed' in df_ts.columns:
     ))
     # Add trend line (linear regression)
     if len(daily_leads) > 1:
-        import numpy as np
         x = np.arange(len(daily_leads))
         y = daily_leads['leads_count'].values
-        # Fit linear regression
         coef = np.polyfit(x, y, 1)
         trend = np.poly1d(coef)(x)
         fig.add_trace(go.Scatter(
@@ -593,7 +592,14 @@ if not df_ts.empty and 'DATE_parsed' in df_ts.columns:
             line=dict(color='orange', width=2, dash='dash'),
             hoverinfo='skip'
         ))
-    # Update layout
+    # Set x-axis range to selected month if not 'All'
+    xaxis_range = None
+    if selected_month_ts != 'All':
+        from calendar import monthrange
+        year, month = map(int, selected_month_ts.split('-'))
+        start_date = f'{year}-{month:02d}-01'
+        end_date = f'{year}-{month:02d}-{monthrange(year, month)[1]}'
+        xaxis_range = [start_date, end_date]
     fig.update_layout(
         title=None,
         plot_bgcolor='white',
@@ -610,7 +616,8 @@ if not df_ts.empty and 'DATE_parsed' in df_ts.columns:
             color='#222',
             linecolor='#222',
             tickfont=dict(color='#222'),
-            zerolinecolor='#ccc'
+            zerolinecolor='#ccc',
+            range=xaxis_range
         ),
         yaxis=dict(
             title=dict(text='Number of Leads', font=dict(color='#222', size=16)),
