@@ -520,6 +520,9 @@ with filter_col_ts:
         selected_branch_ts = st.selectbox('Branch', branches_ts, key='branch_filter_timeseries')
         # Month filter
         if 'DATE' in df.columns:
+            # Ensure DATE_parsed is datetime type
+            if not pd.api.types.is_datetime64_any_dtype(df['DATE_parsed']):
+                df['DATE_parsed'] = pd.to_datetime(df['DATE_parsed'], errors='coerce')
             months = sorted(df['DATE_parsed'].dropna().dt.strftime('%Y-%m').unique())
             months = ['All'] + months
         else:
