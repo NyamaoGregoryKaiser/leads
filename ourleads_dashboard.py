@@ -167,114 +167,13 @@ st.markdown('''
 ''', unsafe_allow_html=True)
 
 # Branch filter for summary cards (top-right above cards)
-# Remove the old/original selectbox for 'branch_filter_cards'
-# _, filter_col_cards = st.columns([10, 1])
-# with filter_col_cards:
-#     with st.container():
-#         st.markdown('<div class="small-filter">', unsafe_allow_html=True)
-#         branches_cards = ['All'] + sorted(df['BRANCH'].unique()) if 'BRANCH' in df.columns else ['All']
-#         selected_branch_cards = st.selectbox('Filter by Branch (Cards)', branches_cards, key='branch_filter_cards')
-#         st.markdown('</div>', unsafe_allow_html=True)
-
-# Responsive flexbox for cards
-card_row_col, filter_col_cards = st.columns([8, 1])
-with card_row_col:
-    st.markdown('''
-        <style>
-        .card-row-metrics {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 0.2em;
-            overflow-x: auto;
-            margin-bottom: 1em;
-            max-width: 100%;
-            width: 100%;
-            justify-content: center;
-        }
-        .card-row-metrics .dashboard-card {
-            flex: 1 0 120px;
-            min-width: 100px;
-            max-width: 220px;
-            margin-bottom: 0.3em;
-            box-sizing: border-box;
-        }
-        @media (max-width: 600px) {
-            .card-row-metrics {
-                display: grid;
-                grid-template-columns: 1fr 1fr;
-                gap: 0.2em;
-                width: 100%;
-            }
-            .card-row-metrics .dashboard-card {
-                width: 100%;
-                min-width: 0;
-                max-width: 100%;
-                margin-bottom: 0.3em;
-                box-sizing: border-box;
-            }
-        }
-        </style>
-    ''', unsafe_allow_html=True)
-
-    # Build the card HTML
-    card_style = """
-        background: #F7F7F9;
-        border-radius: 10px;
-        box-shadow: 0 2px 12px 0 rgba(0,0,0,0.08);
-        border: 2px solid #0074D9;
-        padding: 0.18em 0.15em 0.12em 0.15em;
-        margin: 0.18em 0.1em 0.18em 0.1em;
-        text-align: center;
-        min-width: 100px;
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-        flex: 1;
-        box-sizing: border-box;
-    """
-
-    st.markdown('''
-        <style>
-        .dashboard-card {
-            min-height: 60px !important;
-        }
-        @media (max-width: 600px) {
-            .dashboard-card {
-                min-height: 32px !important;
-            }
-        }
-        </style>
-    ''', unsafe_allow_html=True)
-    number_style = "font-size: 16px; font-weight: bold; color: #001F3F; text-shadow: none; margin-bottom: 0.02em;"
-    label_style = "font-size: 9px; color: #555; font-weight: bold; letter-spacing: 0.2px; text-shadow: none;"
-
-    card_html = f'''
-    <div class="card-row-metrics">
-      <div class="dashboard-card" style="{card_style}">
-        <div style="{number_style}">{total_leads}</div>
-        <div style="{label_style}">Total Leads</div>
-      </div>
-      <div class="dashboard-card" style="{card_style}">
-        <div style="{number_style}">{leads_today} {today_arrow} {today_pct_str}</div>
-        <div style="{label_style}">Leads Today</div>
-      </div>
-      <div class="dashboard-card" style="{card_style}">
-        <div style="{number_style}">{leads_week} {week_arrow} {week_pct_str}</div>
-        <div style="{label_style}">Leads This Week</div>
-      </div>
-      <div class="dashboard-card" style="{card_style}">
-        <div style="{number_style}">{leads_month} {month_arrow} {month_pct_str}</div>
-        <div style="{label_style}">Leads This Month</div>
-      </div>
-    </div>
-    '''
-    st.markdown(card_html, unsafe_allow_html=True)
+_, filter_col_cards = st.columns([10, 1])
 with filter_col_cards:
-    st.markdown('<div class="small-filter">', unsafe_allow_html=True)
-    branches_cards = ['All'] + sorted(df['BRANCH'].unique()) if 'BRANCH' in df.columns else ['All']
-    selected_branch_cards = st.selectbox('Filter by Branch (Cards)', branches_cards, key='branch_filter_cards')
-    st.markdown('</div>', unsafe_allow_html=True)
-# Now filter the cards DataFrame using selected_branch_cards
+    with st.container():
+        st.markdown('<div class="small-filter">', unsafe_allow_html=True)
+        branches_cards = ['All'] + sorted(df['BRANCH'].unique()) if 'BRANCH' in df.columns else ['All']
+        selected_branch_cards = st.selectbox('Filter by Branch (Cards)', branches_cards, key='branch_filter_cards')
+        st.markdown('</div>', unsafe_allow_html=True)
 if selected_branch_cards != 'All' and 'BRANCH' in df.columns:
     df_cards = df[df['BRANCH'] == selected_branch_cards].copy()
 else:
@@ -326,6 +225,114 @@ if leads_prev_month > 0:
 else:
     month_pct_str = ''
 total_leads = len(df_cards)
+
+# Responsive flexbox for cards
+st.markdown('''
+    <style>
+    .card-row-metrics-container {
+        display: flex;
+        flex-direction: row;
+        align-items: flex-start;
+        justify-content: space-between;
+        width: 100%;
+    }
+    .card-row-metrics {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.2em;
+        overflow-x: auto;
+        margin-bottom: 1em;
+        max-width: 100%;
+        width: 100%;
+        justify-content: center;
+    }
+    .card-row-metrics .dashboard-card {
+        flex: 1 0 120px;
+        min-width: 100px;
+        max-width: 220px;
+        margin-bottom: 0.3em;
+        box-sizing: border-box;
+    }
+    @media (max-width: 600px) {
+        .card-row-metrics {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.2em;
+            width: 100%;
+        }
+        .card-row-metrics .dashboard-card {
+            width: 100%;
+            min-width: 0;
+            max-width: 100%;
+            margin-bottom: 0.3em;
+            box-sizing: border-box;
+        }
+    }
+    </style>
+''', unsafe_allow_html=True)
+
+# Build the card HTML with filter on the same row
+card_style = """
+    background: #F7F7F9;
+    border-radius: 10px;
+    box-shadow: 0 2px 12px 0 rgba(0,0,0,0.08);
+    border: 2px solid #0074D9;
+    padding: 0.18em 0.15em 0.12em 0.15em;
+    margin: 0.18em 0.1em 0.18em 0.1em;
+    text-align: center;
+    min-width: 100px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    flex: 1;
+    box-sizing: border-box;
+"""
+
+st.markdown('''
+    <style>
+    .dashboard-card {
+        min-height: 60px !important;
+    }
+    @media (max-width: 600px) {
+        .dashboard-card {
+            min-height: 32px !important;
+        }
+    }
+    </style>
+''', unsafe_allow_html=True)
+number_style = "font-size: 16px; font-weight: bold; color: #001F3F; text-shadow: none; margin-bottom: 0.02em;"
+label_style = "font-size: 9px; color: #555; font-weight: bold; letter-spacing: 0.2px; text-shadow: none;"
+
+card_html = f'''
+<div class="card-row-metrics-container">
+  <div class="card-row-metrics">
+    <div class="dashboard-card" style="{card_style}">
+      <div style="{number_style}">{total_leads}</div>
+      <div style="{label_style}">Total Leads</div>
+    </div>
+    <div class="dashboard-card" style="{card_style}">
+      <div style="{number_style}">{leads_today} {today_arrow} {today_pct_str}</div>
+      <div style="{label_style}">Leads Today</div>
+    </div>
+    <div class="dashboard-card" style="{card_style}">
+      <div style="{number_style}">{leads_week} {week_arrow} {week_pct_str}</div>
+      <div style="{label_style}">Leads This Week</div>
+    </div>
+    <div class="dashboard-card" style="{card_style}">
+      <div style="{number_style}">{leads_month} {month_arrow} {month_pct_str}</div>
+      <div style="{label_style}">Leads This Month</div>
+    </div>
+  </div>
+  <div style="min-width:180px;max-width:240px;align-self:flex-start;">
+    <div class="small-filter">
+      {st.selectbox('Filter by Branch (Cards)', branches_cards, key='branch_filter_cards')}
+    </div>
+  </div>
+</div>
+'''
+st.markdown(card_html, unsafe_allow_html=True)
+
+st.markdown("---")
 
 # Remove or comment out the global conversion to string
 # if not df.empty:
