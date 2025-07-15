@@ -229,13 +229,6 @@ total_leads = len(df_cards)
 # Responsive flexbox for cards
 st.markdown('''
     <style>
-    .card-row-metrics-container {
-        display: flex;
-        flex-direction: row;
-        align-items: flex-start;
-        justify-content: space-between;
-        width: 100%;
-    }
     .card-row-metrics {
         display: flex;
         flex-wrap: wrap;
@@ -271,7 +264,7 @@ st.markdown('''
     </style>
 ''', unsafe_allow_html=True)
 
-# Build the card HTML with filter on the same row
+# Build the card HTML
 card_style = """
     background: #F7F7F9;
     border-radius: 10px;
@@ -304,29 +297,22 @@ number_style = "font-size: 16px; font-weight: bold; color: #001F3F; text-shadow:
 label_style = "font-size: 9px; color: #555; font-weight: bold; letter-spacing: 0.2px; text-shadow: none;"
 
 card_html = f'''
-<div class="card-row-metrics-container">
-  <div class="card-row-metrics">
-    <div class="dashboard-card" style="{card_style}">
-      <div style="{number_style}">{total_leads}</div>
-      <div style="{label_style}">Total Leads</div>
-    </div>
-    <div class="dashboard-card" style="{card_style}">
-      <div style="{number_style}">{leads_today} {today_arrow} {today_pct_str}</div>
-      <div style="{label_style}">Leads Today</div>
-    </div>
-    <div class="dashboard-card" style="{card_style}">
-      <div style="{number_style}">{leads_week} {week_arrow} {week_pct_str}</div>
-      <div style="{label_style}">Leads This Week</div>
-    </div>
-    <div class="dashboard-card" style="{card_style}">
-      <div style="{number_style}">{leads_month} {month_arrow} {month_pct_str}</div>
-      <div style="{label_style}">Leads This Month</div>
-    </div>
+<div class="card-row-metrics">
+  <div class="dashboard-card" style="{card_style}">
+    <div style="{number_style}">{total_leads}</div>
+    <div style="{label_style}">Total Leads</div>
   </div>
-  <div style="min-width:180px;max-width:240px;align-self:flex-start;">
-    <div class="small-filter">
-      {st.selectbox('Filter by Branch (Cards)', branches_cards, key='branch_filter_cards')}
-    </div>
+  <div class="dashboard-card" style="{card_style}">
+    <div style="{number_style}">{leads_today} {today_arrow} {today_pct_str}</div>
+    <div style="{label_style}">Leads Today</div>
+  </div>
+  <div class="dashboard-card" style="{card_style}">
+    <div style="{number_style}">{leads_week} {week_arrow} {week_pct_str}</div>
+    <div style="{label_style}">Leads This Week</div>
+  </div>
+  <div class="dashboard-card" style="{card_style}">
+    <div style="{number_style}">{leads_month} {month_arrow} {month_pct_str}</div>
+    <div style="{label_style}">Leads This Month</div>
   </div>
 </div>
 '''
