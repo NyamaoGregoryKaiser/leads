@@ -227,8 +227,8 @@ else:
 total_leads = len(df_cards)
 
 # Responsive flexbox for cards
-card_col, filter_col_cards = st.columns([6, 1])
-with card_col:
+row_col_cards, row_col_filter = st.columns([6, 1])
+with row_col_cards:
     st.markdown('''
         <style>
         .card-row-metrics {
@@ -319,154 +319,11 @@ with card_col:
     </div>
     '''
     st.markdown(card_html, unsafe_allow_html=True)
-with filter_col_cards:
+with row_col_filter:
     st.markdown('<div class="small-filter">', unsafe_allow_html=True)
     branches_cards = ['All'] + sorted(df['BRANCH'].unique()) if 'BRANCH' in df.columns else ['All']
-    selected_branch_cards = st.selectbox('Filter by Branch', branches_cards, key='branch_filter_cards')
+    selected_branch_cards = st.selectbox('Filter by Branch (Cards)', branches_cards, key='branch_filter_cards')
     st.markdown('</div>', unsafe_allow_html=True)
-if selected_branch_cards != 'All' and 'BRANCH' in df.columns:
-    df_cards = df[df['BRANCH'] == selected_branch_cards].copy()
-else:
-    df_cards = df.copy()
-
-# Recalculate card metrics based on filtered df_cards
-today = pd.Timestamp(datetime.now().date())
-leads_today = df_cards[df_cards['DATE_parsed'].dt.date == today.date()].shape[0]
-yesterday = today - pd.Timedelta(days=1)
-leads_yesterday = df_cards[df_cards['DATE_parsed'].dt.date == yesterday.date()].shape[0]
-leads_today_delta = leads_today - leads_yesterday
-today_arrow = f'<span style="color:#2ECC40;font-size:32px;vertical-align:middle;">&#9650;</span>' if leads_today_delta > 0 else (f'<span style="color:#FF4136;font-size:32px;vertical-align:middle;">&#9660;</span>' if leads_today_delta < 0 else '')
-if leads_yesterday > 0:
-    today_pct = (leads_today_delta / leads_yesterday) * 100
-    today_pct_str = f'<span style="color:{"#2ECC40" if leads_today_delta > 0 else "#FF4136"}; font-size:14px; font-weight:bold;">{abs(today_pct):.1f}%</span>'
-else:
-    today_pct_str = ''
-week_start = today - pd.Timedelta(days=today.weekday())
-days_so_far = (today - week_start).days + 1
-leads_week = df_cards[(df_cards['DATE_parsed'] >= week_start) & (df_cards['DATE_parsed'] <= today)].shape[0]
-prev_week_start = week_start - pd.Timedelta(days=7)
-prev_week_end = prev_week_start + pd.Timedelta(days=days_so_far - 1)
-leads_prev_week = df_cards[(df_cards['DATE_parsed'] >= prev_week_start) & (df_cards['DATE_parsed'] <= prev_week_end)].shape[0]
-week_delta = leads_week - leads_prev_week
-week_arrow = (
-    f'<span style="color:#2ECC40;font-size:32px;vertical-align:middle;">&#9650;</span>' if week_delta > 0 else
-    f'<span style="color:#FF4136;font-size:32px;vertical-align:middle;">&#9660;</span>' if week_delta < 0 else ''
-)
-if leads_prev_week > 0:
-    week_pct = (week_delta / leads_prev_week) * 100
-    week_pct_str = f'<span style="color:{"#2ECC40" if week_delta > 0 else "#FF4136"}; font-size:14px; font-weight:bold;">{abs(week_pct):.1f}%</span>'
-else:
-    week_pct_str = ''
-month_start = today.replace(day=1)
-days_so_far_month = today.day
-leads_month = df_cards[(df_cards['DATE_parsed'] >= month_start) & (df_cards['DATE_parsed'] <= today)].shape[0]
-prev_month_end = month_start - pd.Timedelta(days=1)
-prev_month_start = prev_month_end.replace(day=1)
-prev_month_same_day = prev_month_start + pd.Timedelta(days=days_so_far_month - 1)
-leads_prev_month = df_cards[(df_cards['DATE_parsed'] >= prev_month_start) & (df_cards['DATE_parsed'] <= prev_month_same_day)].shape[0]
-month_delta = leads_month - leads_prev_month
-month_arrow = (
-    f'<span style="color:#2ECC40;font-size:32px;vertical-align:middle;">&#9650;</span>' if month_delta > 0 else
-    f'<span style="color:#FF4136;font-size:32px;vertical-align:middle;">&#9660;</span>' if month_delta < 0 else ''
-)
-if leads_prev_month > 0:
-    month_pct = (month_delta / leads_prev_month) * 100
-    month_pct_str = f'<span style="color:{"#2ECC40" if month_delta > 0 else "#FF4136"}; font-size:14px; font-weight:bold;">{abs(month_pct):.1f}%</span>'
-else:
-    month_pct_str = ''
-total_leads = len(df_cards)
-
-# Responsive flexbox for cards
-st.markdown('''
-    <style>
-    .card-row-metrics {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 0.2em;
-        overflow-x: auto;
-        margin-bottom: 1em;
-        max-width: 100%;
-        width: 100%;
-        justify-content: center;
-    }
-    .card-row-metrics .dashboard-card {
-        flex: 1 0 120px;
-        min-width: 100px;
-        max-width: 220px;
-        margin-bottom: 0.3em;
-        box-sizing: border-box;
-    }
-    @media (max-width: 600px) {
-        .card-row-metrics {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 0.2em;
-            width: 100%;
-        }
-        .card-row-metrics .dashboard-card {
-            width: 100%;
-            min-width: 0;
-            max-width: 100%;
-            margin-bottom: 0.3em;
-            box-sizing: border-box;
-        }
-    }
-    </style>
-''', unsafe_allow_html=True)
-
-# Build the card HTML
-card_style = """
-    background: #F7F7F9;
-    border-radius: 10px;
-    box-shadow: 0 2px 12px 0 rgba(0,0,0,0.08);
-    border: 2px solid #0074D9;
-    padding: 0.18em 0.15em 0.12em 0.15em;
-    margin: 0.18em 0.1em 0.18em 0.1em;
-    text-align: center;
-    min-width: 100px;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    flex: 1;
-    box-sizing: border-box;
-"""
-
-st.markdown('''
-    <style>
-    .dashboard-card {
-        min-height: 60px !important;
-    }
-    @media (max-width: 600px) {
-        .dashboard-card {
-            min-height: 32px !important;
-        }
-    }
-    </style>
-''', unsafe_allow_html=True)
-number_style = "font-size: 16px; font-weight: bold; color: #001F3F; text-shadow: none; margin-bottom: 0.02em;"
-label_style = "font-size: 9px; color: #555; font-weight: bold; letter-spacing: 0.2px; text-shadow: none;"
-
-card_html = f'''
-<div class="card-row-metrics">
-  <div class="dashboard-card" style="{card_style}">
-    <div style="{number_style}">{total_leads}</div>
-    <div style="{label_style}">Total Leads</div>
-  </div>
-  <div class="dashboard-card" style="{card_style}">
-    <div style="{number_style}">{leads_today} {today_arrow} {today_pct_str}</div>
-    <div style="{label_style}">Leads Today</div>
-  </div>
-  <div class="dashboard-card" style="{card_style}">
-    <div style="{number_style}">{leads_week} {week_arrow} {week_pct_str}</div>
-    <div style="{label_style}">Leads This Week</div>
-  </div>
-  <div class="dashboard-card" style="{card_style}">
-    <div style="{number_style}">{leads_month} {month_arrow} {month_pct_str}</div>
-    <div style="{label_style}">Leads This Month</div>
-  </div>
-</div>
-'''
-st.markdown(card_html, unsafe_allow_html=True)
 
 st.markdown("---")
 
