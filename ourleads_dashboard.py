@@ -167,13 +167,15 @@ st.markdown('''
 ''', unsafe_allow_html=True)
 
 # Branch filter for summary cards (top-right above cards)
-_, filter_col_cards = st.columns([10, 1])
-with filter_col_cards:
-    with st.container():
-        st.markdown('<div class="small-filter">', unsafe_allow_html=True)
-        branches_cards = ['All'] + sorted(df['BRANCH'].unique()) if 'BRANCH' in df.columns else ['All']
-        selected_branch_cards = st.selectbox('Filter by Branch (Cards)', branches_cards, key='branch_filter_cards')
-        st.markdown('</div>', unsafe_allow_html=True)
+# Remove the old/original selectbox for 'branch_filter_cards'
+# _, filter_col_cards = st.columns([10, 1])
+# with filter_col_cards:
+#     with st.container():
+#         st.markdown('<div class="small-filter">', unsafe_allow_html=True)
+#         branches_cards = ['All'] + sorted(df['BRANCH'].unique()) if 'BRANCH' in df.columns else ['All']
+#         selected_branch_cards = st.selectbox('Filter by Branch (Cards)', branches_cards, key='branch_filter_cards')
+#         st.markdown('</div>', unsafe_allow_html=True)
+
 if selected_branch_cards != 'All' and 'BRANCH' in df.columns:
     df_cards = df[df['BRANCH'] == selected_branch_cards].copy()
 else:
