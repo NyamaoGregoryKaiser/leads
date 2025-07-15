@@ -176,58 +176,6 @@ st.markdown('''
 #         selected_branch_cards = st.selectbox('Filter by Branch (Cards)', branches_cards, key='branch_filter_cards')
 #         st.markdown('</div>', unsafe_allow_html=True)
 
-if selected_branch_cards != 'All' and 'BRANCH' in df.columns:
-    df_cards = df[df['BRANCH'] == selected_branch_cards].copy()
-else:
-    df_cards = df.copy()
-
-# Recalculate card metrics based on filtered df_cards
-today = pd.Timestamp(datetime.now().date())
-leads_today = df_cards[df_cards['DATE_parsed'].dt.date == today.date()].shape[0]
-yesterday = today - pd.Timedelta(days=1)
-leads_yesterday = df_cards[df_cards['DATE_parsed'].dt.date == yesterday.date()].shape[0]
-leads_today_delta = leads_today - leads_yesterday
-today_arrow = f'<span style="color:#2ECC40;font-size:32px;vertical-align:middle;">&#9650;</span>' if leads_today_delta > 0 else (f'<span style="color:#FF4136;font-size:32px;vertical-align:middle;">&#9660;</span>' if leads_today_delta < 0 else '')
-if leads_yesterday > 0:
-    today_pct = (leads_today_delta / leads_yesterday) * 100
-    today_pct_str = f'<span style="color:{"#2ECC40" if leads_today_delta > 0 else "#FF4136"}; font-size:14px; font-weight:bold;">{abs(today_pct):.1f}%</span>'
-else:
-    today_pct_str = ''
-week_start = today - pd.Timedelta(days=today.weekday())
-days_so_far = (today - week_start).days + 1
-leads_week = df_cards[(df_cards['DATE_parsed'] >= week_start) & (df_cards['DATE_parsed'] <= today)].shape[0]
-prev_week_start = week_start - pd.Timedelta(days=7)
-prev_week_end = prev_week_start + pd.Timedelta(days=days_so_far - 1)
-leads_prev_week = df_cards[(df_cards['DATE_parsed'] >= prev_week_start) & (df_cards['DATE_parsed'] <= prev_week_end)].shape[0]
-week_delta = leads_week - leads_prev_week
-week_arrow = (
-    f'<span style="color:#2ECC40;font-size:32px;vertical-align:middle;">&#9650;</span>' if week_delta > 0 else
-    f'<span style="color:#FF4136;font-size:32px;vertical-align:middle;">&#9660;</span>' if week_delta < 0 else ''
-)
-if leads_prev_week > 0:
-    week_pct = (week_delta / leads_prev_week) * 100
-    week_pct_str = f'<span style="color:{"#2ECC40" if week_delta > 0 else "#FF4136"}; font-size:14px; font-weight:bold;">{abs(week_pct):.1f}%</span>'
-else:
-    week_pct_str = ''
-month_start = today.replace(day=1)
-days_so_far_month = today.day
-leads_month = df_cards[(df_cards['DATE_parsed'] >= month_start) & (df_cards['DATE_parsed'] <= today)].shape[0]
-prev_month_end = month_start - pd.Timedelta(days=1)
-prev_month_start = prev_month_end.replace(day=1)
-prev_month_same_day = prev_month_start + pd.Timedelta(days=days_so_far_month - 1)
-leads_prev_month = df_cards[(df_cards['DATE_parsed'] >= prev_month_start) & (df_cards['DATE_parsed'] <= prev_month_same_day)].shape[0]
-month_delta = leads_month - leads_prev_month
-month_arrow = (
-    f'<span style="color:#2ECC40;font-size:32px;vertical-align:middle;">&#9650;</span>' if month_delta > 0 else
-    f'<span style="color:#FF4136;font-size:32px;vertical-align:middle;">&#9660;</span>' if month_delta < 0 else ''
-)
-if leads_prev_month > 0:
-    month_pct = (month_delta / leads_prev_month) * 100
-    month_pct_str = f'<span style="color:{"#2ECC40" if month_delta > 0 else "#FF4136"}; font-size:14px; font-weight:bold;">{abs(month_pct):.1f}%</span>'
-else:
-    month_pct_str = ''
-total_leads = len(df_cards)
-
 # Responsive flexbox for cards
 card_row_col, filter_col_cards = st.columns([8, 1])
 with card_row_col:
@@ -326,6 +274,58 @@ with filter_col_cards:
     branches_cards = ['All'] + sorted(df['BRANCH'].unique()) if 'BRANCH' in df.columns else ['All']
     selected_branch_cards = st.selectbox('Filter by Branch (Cards)', branches_cards, key='branch_filter_cards')
     st.markdown('</div>', unsafe_allow_html=True)
+# Now filter the cards DataFrame using selected_branch_cards
+if selected_branch_cards != 'All' and 'BRANCH' in df.columns:
+    df_cards = df[df['BRANCH'] == selected_branch_cards].copy()
+else:
+    df_cards = df.copy()
+
+# Recalculate card metrics based on filtered df_cards
+today = pd.Timestamp(datetime.now().date())
+leads_today = df_cards[df_cards['DATE_parsed'].dt.date == today.date()].shape[0]
+yesterday = today - pd.Timedelta(days=1)
+leads_yesterday = df_cards[df_cards['DATE_parsed'].dt.date == yesterday.date()].shape[0]
+leads_today_delta = leads_today - leads_yesterday
+today_arrow = f'<span style="color:#2ECC40;font-size:32px;vertical-align:middle;">&#9650;</span>' if leads_today_delta > 0 else (f'<span style="color:#FF4136;font-size:32px;vertical-align:middle;">&#9660;</span>' if leads_today_delta < 0 else '')
+if leads_yesterday > 0:
+    today_pct = (leads_today_delta / leads_yesterday) * 100
+    today_pct_str = f'<span style="color:{"#2ECC40" if leads_today_delta > 0 else "#FF4136"}; font-size:14px; font-weight:bold;">{abs(today_pct):.1f}%</span>'
+else:
+    today_pct_str = ''
+week_start = today - pd.Timedelta(days=today.weekday())
+days_so_far = (today - week_start).days + 1
+leads_week = df_cards[(df_cards['DATE_parsed'] >= week_start) & (df_cards['DATE_parsed'] <= today)].shape[0]
+prev_week_start = week_start - pd.Timedelta(days=7)
+prev_week_end = prev_week_start + pd.Timedelta(days=days_so_far - 1)
+leads_prev_week = df_cards[(df_cards['DATE_parsed'] >= prev_week_start) & (df_cards['DATE_parsed'] <= prev_week_end)].shape[0]
+week_delta = leads_week - leads_prev_week
+week_arrow = (
+    f'<span style="color:#2ECC40;font-size:32px;vertical-align:middle;">&#9650;</span>' if week_delta > 0 else
+    f'<span style="color:#FF4136;font-size:32px;vertical-align:middle;">&#9660;</span>' if week_delta < 0 else ''
+)
+if leads_prev_week > 0:
+    week_pct = (week_delta / leads_prev_week) * 100
+    week_pct_str = f'<span style="color:{"#2ECC40" if week_delta > 0 else "#FF4136"}; font-size:14px; font-weight:bold;">{abs(week_pct):.1f}%</span>'
+else:
+    week_pct_str = ''
+month_start = today.replace(day=1)
+days_so_far_month = today.day
+leads_month = df_cards[(df_cards['DATE_parsed'] >= month_start) & (df_cards['DATE_parsed'] <= today)].shape[0]
+prev_month_end = month_start - pd.Timedelta(days=1)
+prev_month_start = prev_month_end.replace(day=1)
+prev_month_same_day = prev_month_start + pd.Timedelta(days=days_so_far_month - 1)
+leads_prev_month = df_cards[(df_cards['DATE_parsed'] >= prev_month_start) & (df_cards['DATE_parsed'] <= prev_month_same_day)].shape[0]
+month_delta = leads_month - leads_prev_month
+month_arrow = (
+    f'<span style="color:#2ECC40;font-size:32px;vertical-align:middle;">&#9650;</span>' if month_delta > 0 else
+    f'<span style="color:#FF4136;font-size:32px;vertical-align:middle;">&#9660;</span>' if month_delta < 0 else ''
+)
+if leads_prev_month > 0:
+    month_pct = (month_delta / leads_prev_month) * 100
+    month_pct_str = f'<span style="color:{"#2ECC40" if month_delta > 0 else "#FF4136"}; font-size:14px; font-weight:bold;">{abs(month_pct):.1f}%</span>'
+else:
+    month_pct_str = ''
+total_leads = len(df_cards)
 
 # Remove or comment out the global conversion to string
 # if not df.empty:
