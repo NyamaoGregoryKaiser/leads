@@ -331,10 +331,25 @@ st.markdown("---")
 # --- Counts ---
 col_branch, col_source = st.columns([1.5, 1.2])
 with col_branch:
-    st.subheader("Leads per Branch and Source")
-    if 'BRANCH' in df.columns and 'SOURCE OF LEAD GENERATION' in df.columns:
+    # Inline header and filter for Leads per Branch and Source
+    col_header_branch, col_filter_branch = st.columns([2, 1])
+    with col_header_branch:
+        st.subheader("Leads per Branch and Source", anchor=False)
+    with col_filter_branch:
+        st.markdown('<div class="small-filter">', unsafe_allow_html=True)
+        months_branch = ['All'] + sorted(df['DATE_parsed'].dropna().dt.strftime('%Y-%m').unique()) if 'DATE_parsed' in df.columns else ['All']
+        selected_month_branch = st.selectbox(' ', months_branch, key='month_filter_branch_source')
+        st.markdown('</div>', unsafe_allow_html=True)
+    
+    # Apply month filter
+    if selected_month_branch != 'All' and 'DATE_parsed' in df.columns:
+        df_branch_source = df[df['DATE_parsed'].dt.strftime('%Y-%m') == selected_month_branch]
+    else:
+        df_branch_source = df
+    
+    if 'BRANCH' in df_branch_source.columns and 'SOURCE OF LEAD GENERATION' in df_branch_source.columns:
         # Create a pivot table: rows=BRANCH, columns=SOURCE OF LEAD GENERATION, values=count
-        branch_source = pd.pivot_table(df, index='BRANCH', columns='SOURCE OF LEAD GENERATION', aggfunc='size', fill_value=0)
+        branch_source = pd.pivot_table(df_branch_source, index='BRANCH', columns='SOURCE OF LEAD GENERATION', aggfunc='size', fill_value=0)
         import matplotlib.pyplot as plt
         branch_source = branch_source.loc[branch_source.sum(axis=1).sort_values(ascending=False).index]  # Sort branches by total leads
         fig, ax = plt.subplots(figsize=(10, max(6, 0.5*len(branch_source))))
@@ -395,8 +410,23 @@ with col_source:
 # Place Leads per Team Lead and Team Leader Conversion Ratios side by side
 col_leads, col_conv = st.columns(2)
 with col_leads:
-    st.subheader("Leads per Team Lead")
-    team_lead_counts = df['TEAM LEADER NAME'].value_counts()
+    # Inline header and filter for Leads per Team Lead
+    col_header_team, col_filter_team = st.columns([2, 1])
+    with col_header_team:
+        st.subheader("Leads per Team Lead", anchor=False)
+    with col_filter_team:
+        st.markdown('<div class="small-filter">', unsafe_allow_html=True)
+        months_team = ['All'] + sorted(df['DATE_parsed'].dropna().dt.strftime('%Y-%m').unique()) if 'DATE_parsed' in df.columns else ['All']
+        selected_month_team = st.selectbox(' ', months_team, key='month_filter_team_lead')
+        st.markdown('</div>', unsafe_allow_html=True)
+    
+    # Apply month filter
+    if selected_month_team != 'All' and 'DATE_parsed' in df.columns:
+        df_team = df[df['DATE_parsed'].dt.strftime('%Y-%m') == selected_month_team]
+    else:
+        df_team = df
+    
+    team_lead_counts = df_team['TEAM LEADER NAME'].value_counts()
     bar_fig2 = go.Figure()
     bar_fig2.add_bar(x=team_lead_counts.index, y=team_lead_counts.values, marker_color="#0074D9")
     bar_fig2.update_layout(
@@ -462,47 +492,54 @@ with col_conv:
         ratio = (converted_leads / total_leads).fillna(0).sort_values(ascending=False)
         mask = ratio.index.str.strip().str.lower() != 'undefined'
         ratio = ratio[mask]
-        import plotly.graph_objects as go
-        team_leaders = ratio.index.tolist()
-        conversion_perc = (ratio.values * 100).round(1)
-        fig = go.Figure()
-        fig.add_bar(
-            x=conversion_perc,
-            y=team_leaders,
-            orientation='h',
-            marker_color='#0074D9',
-            hovertemplate='%{y}: %{x:.1f}%<extra></extra>'
-        )
-        fig.update_layout(
-            xaxis=dict(
-                title=dict(text='Conversion Ratio (%)', font=dict(color='#222', size=16)),
-                range=[0, max(15, conversion_perc.max() + 2)],
-                tickformat='.0f',
-                color='#222',
-                linecolor='#222',
-                tickfont=dict(color='#222'),
-                gridcolor='#ccc',
-                zerolinecolor='#ccc'
-            ),
-            yaxis=dict(
-                title=dict(text='Team Leader', font=dict(color='#222', size=16)),
-                autorange="reversed",
-                color='#222',
-                linecolor='#222',
-                tickfont=dict(color='#222'),
-                gridcolor='#ccc',
-                zerolinecolor='#ccc'
-            ),
-            margin=dict(l=20, r=20, t=40, b=40),
-            width=650, height=350,
-            showlegend=False,
-            plot_bgcolor='white',
-            paper_bgcolor='white',
-            font=dict(color='#222', size=14),
-            title=None,
-        )
-        fig.update_xaxes(showgrid=True, gridcolor='#eee')
-        fig.update_yaxes(autorange="reversed")
+        
+        # Ensure we have data to plot
+        if len(ratio) > 0:
+            import plotly.graph_objects as go
+            team_leaders = ratio.index.tolist()
+            conversion_perc = (ratio.values * 100).round(1)
+            
+            fig = go.Figure()
+            fig.add_bar(
+                x=conversion_perc,
+                y=team_leaders,
+                orientation='h',
+                marker_color='#0074D9',
+                hovertemplate='%{y}: %{x:.1f}%<extra></extra>'
+            )
+            fig.update_layout(
+                xaxis=dict(
+                    title=dict(text='Conversion Ratio (%)', font=dict(color='#222', size=16)),
+                    range=[0, max(15, conversion_perc.max() + 2)],
+                    tickformat='.0f',
+                    color='#222',
+                    linecolor='#222',
+                    tickfont=dict(color='#222'),
+                    gridcolor='#ccc',
+                    zerolinecolor='#ccc'
+                ),
+                yaxis=dict(
+                    title=dict(text='Team Leader', font=dict(color='#222', size=16)),
+                    color='#222',
+                    linecolor='#222',
+                    tickfont=dict(color='#222'),
+                    gridcolor='#ccc',
+                    zerolinecolor='#ccc',
+                    # Explicitly set the category order to match the data
+                    categoryorder='array',
+                    categoryarray=team_leaders[::-1]  # Reverse to show highest at top
+                ),
+                margin=dict(l=20, r=20, t=40, b=40),
+                width=650, height=350,
+                showlegend=False,
+                plot_bgcolor='white',
+                paper_bgcolor='white',
+                font=dict(color='#222', size=14),
+                title=None,
+            )
+            fig.update_xaxes(showgrid=True, gridcolor='#eee')
+        else:
+            st.info('No conversion data available for the selected filters.')
         st.markdown('<div style="overflow-x:auto;width=100%">', unsafe_allow_html=True)
         st.plotly_chart(fig, use_container_width=False, config={'displayModeBar': False, 'scrollZoom': True})
         st.markdown('</div>', unsafe_allow_html=True)
@@ -696,49 +733,67 @@ st.markdown("---")
 
 col_left, col_right = st.columns([1, 1])
 with col_left:
-    st.subheader("Number of Agents per Branch")
-    if 'BRANCH' in df.columns and 'AGENT NAME' in df.columns:
-        branch_agent_counts = df.groupby('BRANCH')['AGENT NAME'].nunique().sort_values(ascending=False)
-        import plotly.graph_objects as go
-        fig = go.Figure()
-        fig.add_bar(
-            x=branch_agent_counts.values,
-            y=branch_agent_counts.index,
-            orientation='h',
-            marker_color='#0074D9',
-            hovertemplate='%{y}: %{x} agents<extra></extra>'
-        )
-        fig.update_layout(
-            xaxis=dict(
-                title=dict(text='Number of Agents', font=dict(color='#222', size=16)),
-                color='#222',
-                linecolor='#222',
-                tickfont=dict(color='#222'),
-                gridcolor='#ccc',
-                zerolinecolor='#ccc',
-            ),
-            yaxis=dict(
-                title=dict(text='Branch', font=dict(color='#222', size=16)),
-                autorange="reversed",
-                color='#222',
-                linecolor='#222',
-                tickfont=dict(color='#222'),
-                gridcolor='#ccc',
-                zerolinecolor='#ccc',
-            ),
-            margin=dict(l=20, r=20, t=30, b=40),
-            width=650, height=350,
-            showlegend=False,
-            plot_bgcolor='white',
-            paper_bgcolor='white',
-            font=dict(color='#222', size=14),
-            title=None,
-        )
-        st.markdown('<div style="overflow-x:auto;width:100%">', unsafe_allow_html=True)
-        st.plotly_chart(fig, use_container_width=False, config={'displayModeBar': False, 'scrollZoom': True})
-        st.markdown('</div>', unsafe_allow_html=True)
-    else:
-        st.info('BRANCH or AGENT NAME column not found in the data.')
+    st.subheader("Agents per Team Lead")
+    # Team lead agent data
+    team_lead_agents_data = {
+        'CECILIA NAISORA MACKSON': 3,
+        'Chris Konzi Mbinda': 12,
+        'Cosmas Gathogo Njogu': 7,  # Combined the two entries (6 + 1)
+        'ERIC OWUOR': 3,
+        'George Barasa Barasa': 5,
+        'GRACE WANGARI KARIUKI': 6,
+        'Irene Awuor': 5,
+        'Josephine Ndewa Kitonga': 3,
+        'Judy Gathoni Wangu': 3,
+        'Kevin Ouma Odongo': 5,
+        'Lydia Njora Njora': 1,
+        'Morris Maina Gichuki': 5,
+        'Peter Mosingo Matuyia': 5,
+        'PETER OWUOR OUMA': 4,
+        'Teresia Wambui Nyambura': 1
+    }
+    
+    # Convert to pandas Series and sort by number of agents
+    team_lead_agents = pd.Series(team_lead_agents_data).sort_values(ascending=False)
+    
+    import plotly.graph_objects as go
+    fig = go.Figure()
+    fig.add_bar(
+        x=team_lead_agents.values,
+        y=team_lead_agents.index,
+        orientation='h',
+        marker_color='#0074D9',
+        hovertemplate='%{y}: %{x} agents<extra></extra>'
+    )
+    fig.update_layout(
+        xaxis=dict(
+            title=dict(text='Number of Agents', font=dict(color='#222', size=16)),
+            color='#222',
+            linecolor='#222',
+            tickfont=dict(color='#222'),
+            gridcolor='#ccc',
+            zerolinecolor='#ccc',
+        ),
+        yaxis=dict(
+            title=dict(text='Team Lead', font=dict(color='#222', size=16)),
+            autorange="reversed",
+            color='#222',
+            linecolor='#222',
+            tickfont=dict(color='#222'),
+            gridcolor='#ccc',
+            zerolinecolor='#ccc',
+        ),
+        margin=dict(l=20, r=20, t=30, b=40),
+        width=650, height=350,
+        showlegend=False,
+        plot_bgcolor='white',
+        paper_bgcolor='white',
+        font=dict(color='#222', size=14),
+        title=None,
+    )
+    st.markdown('<div style="overflow-x:auto;width=100%">', unsafe_allow_html=True)
+    st.plotly_chart(fig, use_container_width=False, config={'displayModeBar': False, 'scrollZoom': True})
+    st.markdown('</div>', unsafe_allow_html=True)
 with col_right:
     st.subheader("Top Locations")
     if 'LOCATION' in df.columns:
