@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 import gspread
-from datetime import datetime
+from datetime import datetime, timedelta
 import time
 import matplotlib.pyplot as plt
 import plotly.graph_objects as go
@@ -507,6 +507,9 @@ with col_conv:
                 marker_color='#0074D9',
                 hovertemplate='%{y}: %{x:.1f}%<extra></extra>'
             )
+            # Calculate dynamic height based on number of team leaders
+            dynamic_height = max(350, len(team_leaders) * 25)  # 25px per team leader, minimum 350px
+            
             fig.update_layout(
                 xaxis=dict(
                     title=dict(text='Conversion Ratio (%)', font=dict(color='#222', size=16)),
@@ -522,15 +525,21 @@ with col_conv:
                     title=dict(text='Team Leader', font=dict(color='#222', size=16)),
                     color='#222',
                     linecolor='#222',
-                    tickfont=dict(color='#222'),
+                    tickfont=dict(color='#222', size=12),  # Slightly smaller font for better fit
                     gridcolor='#ccc',
                     zerolinecolor='#ccc',
                     # Explicitly set the category order to match the data
                     categoryorder='array',
-                    categoryarray=team_leaders[::-1]  # Reverse to show highest at top
+                    categoryarray=team_leaders[::-1],  # Reverse to show highest at top
+                    # Ensure all ticks are shown
+                    tickmode='array',
+                    tickvals=list(range(len(team_leaders))),
+                    ticktext=team_leaders[::-1],
+                    # Prevent automatic tick skipping
+                    nticks=len(team_leaders)
                 ),
                 margin=dict(l=20, r=20, t=40, b=40),
-                width=650, height=350,
+                width=650, height=dynamic_height,
                 showlegend=False,
                 plot_bgcolor='white',
                 paper_bgcolor='white',
@@ -812,3 +821,208 @@ with col_right:
         st.pyplot(fig)
     else:
         st.info('No LOCATION column found in the data.') 
+
+st.markdown("---")
+
+# --- Target vs Actual Leads Comparison ---
+st.subheader("Target vs Actual Leads Comparison")
+
+# Target data provided by user
+target_data = {
+    'CECILIA NAISORA MACKSON': {'monthly_target': 147.00, 'target_mtd': 7.00},
+    'KEVIN ODONGO': {'monthly_target': 147.00, 'target_mtd': 7.00},
+    'GEORGE ALUKWE BARASA': {'monthly_target': 147.00, 'target_mtd': 7.00},
+    'IRINE AWUOR': {'monthly_target': 147.00, 'target_mtd': 7.00},
+    'MARTIN KURUI': {'monthly_target': 147.00, 'target_mtd': 7.00},
+    'COSMAS GATHOGO NJOGU': {'monthly_target': 147.00, 'target_mtd': 7.00},
+    'LYDIA NGONYO NJORA': {'monthly_target': 147.00, 'target_mtd': 7.00},
+    'MORRIS MAINA GICHUKI': {'monthly_target': 147.00, 'target_mtd': 7.00},
+    'NELLIUS WANGARI NDEGWA': {'monthly_target': 147.00, 'target_mtd': 7.00},
+    'DAVID NYAMBURA MUTURI': {'monthly_target': 147.00, 'target_mtd': 7.00},
+    'ELVIS KOECH': {'monthly_target': 148.00, 'target_mtd': 7.05},
+    'JOSEPHINE NDEWA KITONGA': {'monthly_target': 147.00, 'target_mtd': 7.00},
+    'MIRIAM NJERI WANJIKU': {'monthly_target': 147.00, 'target_mtd': 7.00},
+    'ADAMS ONDIEK': {'monthly_target': 147.00, 'target_mtd': 7.00},
+    'CHRIS MBINDA': {'monthly_target': 147.00, 'target_mtd': 7.00},
+    'HELLEN MUTHONI': {'monthly_target': 147.00, 'target_mtd': 7.00},
+    'TERESIAH WAMBUI': {'monthly_target': 147.00, 'target_mtd': 7.00},
+    'AGATTA MUTHEU MUTINDI': {'monthly_target': 147.00, 'target_mtd': 7.00},
+    'GRACE WANGARI KARIUKI': {'monthly_target': 147.00, 'target_mtd': 7.00},
+    'JUDY GATHONI': {'monthly_target': 147.00, 'target_mtd': 7.00},
+    'WILLIAM ODUOR OTIENO': {'monthly_target': 147.00, 'target_mtd': 7.00}
+}
+
+# Get actual leads for each team leader (monthly only)
+if 'TEAM LEADER NAME' in df.columns:
+    # Get leads for the current month only
+    current_month = datetime.now().strftime('%Y-%m')
+    monthly_leads = df[df['DATE_parsed'].dt.strftime('%Y-%m') == current_month]['TEAM LEADER NAME'].value_counts()
+    
+    # Calculate Month-to-Day target based on working days
+    today = datetime.now()
+    current_day = today.day
+    
+    # August 2025: August 1st was a Friday
+    # Calculate working days from August 1st to today
+    august_start = datetime(2025, 8, 1)  # August 1st, 2025 (Friday)
+    
+    # Count working days from August 1st to today
+    working_days_passed = 0
+    current_date = august_start
+    while current_date <= today:
+        # Check if it's a weekday (Monday=0, Tuesday=1, ..., Friday=4, Saturday=5, Sunday=6)
+        if current_date.weekday() < 5:  # Monday to Friday
+            working_days_passed += 1
+        current_date += timedelta(days=1)
+    
+    # August 2025 has 21 working days total (excluding weekends)
+    august_working_days = 21
+    
+    # Create comparison DataFrame
+    comparison_data = []
+    for name, targets in target_data.items():
+        actual = monthly_leads.get(name, 0)
+        # Calculate month-to-day target (proportional to working days passed)
+        mtd_target = (targets['monthly_target'] / august_working_days) * working_days_passed
+        
+        comparison_data.append({
+            'Name': name,
+            'Monthly Target': targets['monthly_target'],
+            'Target MTD': targets['target_mtd'],
+            'Month-to-Day Target': round(mtd_target, 1),
+            'Actual Monthly Leads': actual,
+            'Performance %': (actual / targets['monthly_target'] * 100) if targets['monthly_target'] > 0 else 0
+        })
+    
+    comparison_df = pd.DataFrame(comparison_data)
+    comparison_df = comparison_df.sort_values('Performance %', ascending=False)
+    
+    # Create clustered bar chart
+    fig = go.Figure()
+    
+    # Add Monthly Target bars (3D effect)
+    fig.add_trace(go.Bar(
+        name='Monthly Target',
+        x=comparison_df['Name'],
+        y=comparison_df['Monthly Target'],
+        marker_color='#0074D9',
+        opacity=0.8,
+        marker=dict(
+            line=dict(width=2, color='#0056b3'),
+            pattern=dict(fillmode="overlay", size=2, solidity=0.2)
+        )
+    ))
+    
+    # Add Month-to-Day Target bars (3D effect)
+    fig.add_trace(go.Bar(
+        name='Month-to-Day Target',
+        x=comparison_df['Name'],
+        y=comparison_df['Month-to-Day Target'],
+        marker_color='#FF851B',
+        opacity=0.8,
+        marker=dict(
+            line=dict(width=2, color='#e67600'),
+            pattern=dict(fillmode="overlay", size=2, solidity=0.2)
+        )
+    ))
+    
+    # Add Actual Monthly Leads bars (3D effect)
+    fig.add_trace(go.Bar(
+        name='Actual Monthly Leads',
+        x=comparison_df['Name'],
+        y=comparison_df['Actual Monthly Leads'],
+        marker_color='#2ECC40',
+        opacity=0.8,
+        marker=dict(
+            line=dict(width=2, color='#27ae60'),
+            pattern=dict(fillmode="overlay", size=2, solidity=0.2)
+        )
+    ))
+    
+    # Update layout with 3D effect
+    fig.update_layout(
+        title=None,
+        barmode='group',
+        plot_bgcolor='white',
+        paper_bgcolor='white',
+        font=dict(color='#222', size=12),
+        xaxis=dict(
+            title=dict(text='Team Leaders', font=dict(color='#222', size=16)),
+            tickangle=-45,
+            color='#222',
+            linecolor='#222',
+            tickfont=dict(color='#222', size=10),
+            gridcolor='#ccc',
+            zerolinecolor='#ccc'
+        ),
+        yaxis=dict(
+            title=dict(text='Number of Leads', font=dict(color='#222', size=16)),
+            color='#222',
+            linecolor='#222',
+            tickfont=dict(color='#222'),
+            gridcolor='#ccc',
+            zerolinecolor='#ccc'
+        ),
+        margin=dict(l=20, r=20, t=40, b=120),  # Increased bottom margin for rotated labels
+        height=500,
+        showlegend=True,
+        legend=dict(
+            orientation="h",
+            yanchor="bottom",
+            y=1.02,
+            xanchor="right",
+            x=1
+        ),
+        # 3D effect properties
+        scene=dict(
+            camera=dict(
+                eye=dict(x=1.5, y=1.5, z=1.5)
+            )
+        ),
+        # Add depth effect
+        bargap=0.15,
+        bargroupgap=0.1
+    )
+    
+    st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False, 'scrollZoom': True})
+    
+    # Add performance summary with custom white cards
+    st.markdown("### Performance Summary")
+    
+    # Calculate metrics
+    total_monthly_target = comparison_df['Monthly Target'].sum()
+    total_mtd_target = comparison_df['Month-to-Day Target'].sum()
+    total_actual_leads = comparison_df['Actual Monthly Leads'].sum()
+    overall_performance = (total_actual_leads / total_monthly_target * 100) if total_monthly_target > 0 else 0
+    above_target = len(comparison_df[comparison_df['Performance %'] >= 100])
+    
+    # Custom white metric cards using HTML
+    metric_cards_html = f'''
+    <div style="display: flex; gap: 10px; margin: 20px 0;">
+        <div style="flex: 1; background: white; border: 1px solid #e0e0e0; border-radius: 8px; padding: 15px; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+            <div style="font-size: 24px; font-weight: bold; color: #222; margin-bottom: 5px;">{total_monthly_target:.0f}</div>
+            <div style="font-size: 12px; color: #666;">Total Monthly Target</div>
+        </div>
+        <div style="flex: 1; background: white; border: 1px solid #e0e0e0; border-radius: 8px; padding: 15px; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+            <div style="font-size: 24px; font-weight: bold; color: #222; margin-bottom: 5px;">{total_mtd_target:.0f}</div>
+            <div style="font-size: 12px; color: #666;">Total MTD Target</div>
+        </div>
+        <div style="flex: 1; background: white; border: 1px solid #e0e0e0; border-radius: 8px; padding: 15px; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+            <div style="font-size: 24px; font-weight: bold; color: #222; margin-bottom: 5px;">{total_actual_leads:.0f}</div>
+            <div style="font-size: 12px; color: #666;">Total Actual Monthly Leads</div>
+        </div>
+        <div style="flex: 1; background: white; border: 1px solid #e0e0e0; border-radius: 8px; padding: 15px; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+            <div style="font-size: 24px; font-weight: bold; color: #222; margin-bottom: 5px;">{overall_performance:.1f}%</div>
+            <div style="font-size: 12px; color: #666;">Overall Performance</div>
+        </div>
+        <div style="flex: 1; background: white; border: 1px solid #e0e0e0; border-radius: 8px; padding: 15px; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+            <div style="font-size: 24px; font-weight: bold; color: #222; margin-bottom: 5px;">{above_target}/{len(comparison_df)}</div>
+            <div style="font-size: 12px; color: #666;">Above Target</div>
+        </div>
+    </div>
+    '''
+    
+    st.markdown(metric_cards_html, unsafe_allow_html=True)
+    
+else:
+    st.info('TEAM LEADER NAME column not found in the data.') 
