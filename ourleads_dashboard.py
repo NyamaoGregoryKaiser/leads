@@ -50,7 +50,7 @@ mpl.rcParams.update({
 st.set_page_config(page_title="Our Leads Dashboard", layout="wide")
 
 # --- Google Sheets Setup ---
-SHEET_URL = 'https://docs.google.com/spreadsheets/d/1CNR-5kLURpyEjbKVqA_ejtzgSdDsXMD9EmWtO7t2Ml0/edit?usp=sharing'
+SHEET_URL = 'https://docs.google.com/spreadsheets/d/1d6S3Fgxstdujij5tTldsrP0KkBGLNkTw8M1VwaXMD58/edit?usp=sharing'
 SHEET_ID = SHEET_URL.split('/')[5]
 
 scope = [
@@ -80,8 +80,40 @@ def get_leads_dataframe():
         client = gspread.authorize(creds)
         sheet = client.open_by_key(SHEET_ID)
         worksheet = sheet.sheet1
-        data = worksheet.get_all_records()
-        df = pd.DataFrame(data)
+        # Use get_all_values to avoid duplicate header error, then deduplicate headers manually
+        values = worksheet.get_all_values()
+        if not values:
+            return pd.DataFrame()
+        raw_headers = values[0]
+        # Deduplicate headers: keep first occurrence, suffix subsequent duplicates with _2, _3, ...
+        counts = {}
+        headers = []
+        for h in raw_headers:
+            name = (h or '').strip()
+            if name == '':
+                name = 'Unnamed'
+            if name in counts:
+                counts[name] += 1
+                headers.append(f"{name}_{counts[name]}")
+            else:
+                counts[name] = 1
+                headers.append(name)
+        rows = values[1:]
+        # Ensure row lengths match headers length
+        normalized_rows = [row + [''] * (len(headers) - len(row)) if len(row) < len(headers) else row[:len(headers)] for row in rows]
+        df = pd.DataFrame(normalized_rows, columns=headers)
+        
+        # Combine all AGENT NAME columns into a single column
+        agent_columns = [col for col in df.columns if col.startswith('AGENT NAME')]
+        if len(agent_columns) > 1:
+            # Combine all agent name columns, filtering out empty values
+            df['AGENT NAME'] = df[agent_columns].apply(
+                lambda row: ', '.join([str(val).strip() for val in row if pd.notna(val) and str(val).strip() != '']), 
+                axis=1
+            )
+            # Drop the duplicate columns, keeping only the combined 'AGENT NAME'
+            df = df.drop(columns=[col for col in agent_columns if col != 'AGENT NAME'])
+        
         # st.success(f"✅ Successfully loaded {len(df)} records from Google Sheets")
         return df
     except Exception as e:
@@ -559,10 +591,11 @@ with col_conv:
 st.markdown("---")
 
 # --- Time Series Chart ---
+current_year = datetime.now().year
 header_col, filter_col_branch, filter_col_month = st.columns([3, 1, 1])
 with header_col:
-    st.subheader("Leads per Day - Time Series", anchor=False)
-# Parse DATE_parsed ONCE at the start
+    st.subheader(f"Leads per Day - Time Series ({current_year})", anchor=False)
+# Ensure DATE_parsed is datetime
 if 'DATE' in df.columns and not pd.api.types.is_datetime64_any_dtype(df['DATE_parsed']):
     df['DATE_parsed'] = pd.to_datetime(df['DATE'], errors='coerce')
 # Branch filter
@@ -574,46 +607,53 @@ if selected_branch_ts != 'All' and 'BRANCH' in df.columns:
     df_branch = df[df['BRANCH'] == selected_branch_ts]
 else:
     df_branch = df
-# Month filter options based on branch
+# Restrict month options to current year only
 if 'DATE_parsed' in df_branch.columns:
-    months = ['All'] + sorted(df_branch['DATE_parsed'].dropna().dt.strftime('%Y-%m').unique())
+    df_branch_curr = df_branch[df_branch['DATE_parsed'].dt.year == current_year]
+    months = ['All'] + sorted(df_branch_curr['DATE_parsed'].dropna().dt.strftime('%Y-%m').unique())
 else:
     months = ['All']
-if 'month_filter_timeseries' in st.session_state:
-    if st.session_state['month_filter_timeseries'] not in months:
+if 'month_filter_timeseries' in st.session_state and st.session_state['month_filter_timeseries'] not in months:
         st.session_state['month_filter_timeseries'] = 'All'
 with filter_col_month:
     selected_month_ts = st.selectbox('Month', months, key='month_filter_timeseries')
-# Apply both filters
-# Always apply month filter to branch-filtered DataFrame
-df_ts = df_branch.copy()
-if selected_month_ts != 'All' and 'DATE_parsed' in df_ts.columns:
-    df_ts = df_ts[df_ts['DATE_parsed'].dt.strftime('%Y-%m') == selected_month_ts]
-# Only plot if there is data
-if not df_ts.empty and 'DATE_parsed' in df_ts.columns:
-    daily_leads = (
-        df_ts.dropna(subset=['DATE_parsed'])
-        .groupby(df_ts['DATE_parsed'].dt.date)
+
+# Build daily series for current year (up to today only)
+start_of_year = pd.Timestamp(current_year, 1, 1)
+today = pd.Timestamp(datetime.now().date())
+df_year = df_branch[df_branch['DATE_parsed'].dt.year == current_year].copy()
+if selected_month_ts != 'All' and 'DATE_parsed' in df_year.columns:
+    df_year = df_year[df_year['DATE_parsed'].dt.strftime('%Y-%m') == selected_month_ts]
+    # Adjust range to selected month
+    month_dt = pd.to_datetime(selected_month_ts + '-01')
+    start_of_year = month_dt.replace(day=1)
+    end_of_year = (start_of_year + pd.offsets.MonthEnd(1)).normalize()
+    # Don't exceed today's date
+    end_of_year = min(end_of_year, today)
+else:
+    end_of_year = today
+
+if not df_year.empty and 'DATE_parsed' in df_year.columns:
+    daily_index = pd.date_range(start=start_of_year, end=end_of_year, freq='D')
+    daily_series = (
+        df_year.set_index('DATE_parsed')
+        .resample('D')
         .size()
-        .reset_index(name='leads_count')
+        .reindex(daily_index, fill_value=0)
     )
-    daily_leads['date'] = pd.to_datetime(daily_leads['DATE_parsed']) if 'DATE_parsed' in daily_leads.columns else pd.to_datetime(daily_leads['date'])
-    daily_leads = daily_leads.sort_values('date')
-    # Create time series chart using plotly
+    daily_leads = pd.DataFrame({'date': daily_series.index, 'leads_count': daily_series.values})
+
     import plotly.graph_objects as go
-    from plotly.subplots import make_subplots
     fig = go.Figure()
-    # Add line chart
     fig.add_trace(go.Scatter(
         x=daily_leads['date'],
         y=daily_leads['leads_count'],
         mode='lines+markers',
         name='Leads per Day',
         line=dict(color='#0074D9', width=3),
-        marker=dict(size=6, color='#0074D9'),
-        hovertemplate='Date: %{x}<br>Leads: %{y}<extra></extra>'
+        marker=dict(size=4, color='#0074D9'),
+        hovertemplate='Date: %{x|%b %d, %Y}<br>Leads: %{y}<extra></extra>'
     ))
-    # Add area fill
     fig.add_trace(go.Scatter(
         x=daily_leads['date'],
         y=daily_leads['leads_count'],
@@ -622,14 +662,13 @@ if not df_ts.empty and 'DATE_parsed' in df_ts.columns:
         fillcolor='rgba(0, 116, 217, 0.1)',
         line=dict(width=0),
         showlegend=False,
-        hovertemplate='Date: %{x}<br>Leads: %{y}<extra></extra>'
+        hoverinfo='skip'
     ))
-    # Add trend line (linear regression)
+    # Trend line over the visible range
     if len(daily_leads) > 1:
         import numpy as np
         x = np.arange(len(daily_leads))
         y = daily_leads['leads_count'].values
-        # Fit linear regression
         coef = np.polyfit(x, y, 1)
         trend = np.poly1d(coef)(x)
         fig.add_trace(go.Scatter(
@@ -640,7 +679,22 @@ if not df_ts.empty and 'DATE_parsed' in df_ts.columns:
             line=dict(color='orange', width=2, dash='dash'),
             hoverinfo='skip'
         ))
-    # Update layout
+    # Axis config: monthly ticks, current year range
+    xaxis_cfg = dict(
+        title=dict(text='Date', font=dict(color='#222', size=16)),
+        showgrid=True,
+        gridcolor='#eee',
+        color='#222',
+        linecolor='#222',
+        tickfont=dict(color='#222'),
+        zerolinecolor='#ccc',
+        range=[start_of_year, end_of_year]
+    )
+    if selected_month_ts == 'All':
+        xaxis_cfg.update(dict(dtick='M1', tickformat='%b'))
+    else:
+        xaxis_cfg.update(dict(dtick='D1', tickformat='%b %d'))
+
     fig.update_layout(
         title=None,
         plot_bgcolor='white',
@@ -649,16 +703,7 @@ if not df_ts.empty and 'DATE_parsed' in df_ts.columns:
         hovermode='x unified',
         margin=dict(l=20, r=20, t=40, b=40),
         height=400,
-        xaxis=dict(
-            title=dict(text='Date', font=dict(color='#222', size=16)),
-            showgrid=True,
-            gridcolor='#eee',
-            tickformat='%b %d, %Y',
-            color='#222',
-            linecolor='#222',
-            tickfont=dict(color='#222'),
-            zerolinecolor='#ccc'
-        ),
+        xaxis=xaxis_cfg,
         yaxis=dict(
             title=dict(text='Number of Leads', font=dict(color='#222', size=16)),
             showgrid=True,
@@ -824,6 +869,47 @@ with col_right:
 
 st.markdown("---")
 
+# --- Data Table Section ---
+st.subheader("All Leads Data")
+st.markdown("Complete dataset with all agent names combined in a single column.")
+
+# Create a display-friendly version of the dataframe
+display_df = df.copy()
+
+# Clean up the display - replace NaN with empty strings for better readability
+display_df = display_df.fillna('')
+
+# Show the data table with all columns
+st.dataframe(
+    display_df,
+    use_container_width=True,
+    height=400,
+    column_config={
+        "DATE": st.column_config.DateColumn("Date", format="DD/MM/YYYY"),
+        "CLIENT CONTACT": st.column_config.TextColumn("Client Contact", width="medium"),
+        "EMAIL ADRESS": st.column_config.TextColumn("Email Address", width="medium"),
+        "AGENT NAME": st.column_config.TextColumn("Agent Name(s)", width="large"),
+        "TEAM LEADER NAME": st.column_config.TextColumn("Team Leader", width="medium"),
+        "BRANCH": st.column_config.TextColumn("Branch", width="small"),
+        "SOURCE OF LEAD GENERATION": st.column_config.TextColumn("Lead Source", width="medium"),
+        "CLIENT NAME": st.column_config.TextColumn("Client Name", width="medium"),
+        "VEHICLE NO. PLATE": st.column_config.TextColumn("Vehicle Plate", width="small"),
+        "TYPE OF VEHICLE": st.column_config.TextColumn("Vehicle Type", width="medium"),
+        "LOCATION": st.column_config.TextColumn("Location", width="medium")
+    }
+)
+
+# Add download functionality
+csv = display_df.to_csv(index=False)
+st.download_button(
+    label="📥 Download Data as CSV",
+    data=csv,
+    file_name=f"leads_data_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+    mime="text/csv"
+)
+
+st.markdown("---")
+
 # --- Target vs Actual Leads Comparison ---
 st.subheader("Target vs Actual Leads Comparison")
 
@@ -856,7 +942,189 @@ target_data = {
 if 'TEAM LEADER NAME' in df.columns:
     # Get leads for the current month only
     current_month = datetime.now().strftime('%Y-%m')
-    monthly_leads = df[df['DATE_parsed'].dt.strftime('%Y-%m') == current_month]['TEAM LEADER NAME'].value_counts()
+    monthly_leads_raw = df[df['DATE_parsed'].dt.strftime('%Y-%m') == current_month]['TEAM LEADER NAME'].value_counts()
+    
+    # Create a function to match names by checking if at least 2 names match
+    def normalize_name(name):
+        if pd.isna(name):
+            return ""
+        return str(name).strip().upper().replace('  ', ' ')
+    
+    def find_best_match(actual_name, target_names):
+        """Find the best match using character-level similarity and word matching"""
+        actual_normalized = normalize_name(actual_name)
+        actual_words = actual_normalized.split()
+        
+        # Comprehensive mapping for all team leaders
+        name_mapping = {
+            # Exact matches and variations
+            'MORRIS MAINA': 'MORRIS MAINA GICHUKI',
+            'MORRIS MAINA GICHUKI': 'MORRIS MAINA GICHUKI',
+            'COSMAS GATHOGO NJOGU': 'COSMAS GATHOGO NJOGU',
+            'COSMAS NJOGU': 'COSMAS GATHOGO NJOGU',
+            'TERESIA WAMBUI NYAMBURA': 'TERESIAH WAMBUI',
+            'TERESIAH WAMBUI': 'TERESIAH WAMBUI',
+            'CHRIS KONZI MBINDA': 'CHRIS MBINDA',
+            'CHRIS MBINDA': 'CHRIS MBINDA',
+            'GRACE WANGARI KARIUKI': 'GRACE WANGARI KARIUKI',
+            'GRACE WANGARI': 'GRACE WANGARI KARIUKI',
+            'PETER OWUOR OUMA': 'PETER OWUOR OUMA',
+            'ERIC OWUOR': 'ERIC OWUOR',
+            'JUDY GATHONI WANGU': 'JUDY GATHONI',
+            'JUDY GATHONI': 'JUDY GATHONI',
+            'LYDIA NJORA NJORA': 'LYDIA NGONYO NJORA',
+            'LYDIA NGONYO NJORA': 'LYDIA NGONYO NJORA',
+            'CECILIA NAISORA MACKSON': 'CECILIA NAISORA MACKSON',
+            'CECILIA MACKSON': 'CECILIA NAISORA MACKSON',
+            'IRENE AWUOR': 'IRINE AWUOR',
+            'IRINE AWUOR': 'IRINE AWUOR',
+            'JOSEPHINE NDEWA KITONGA': 'JOSEPHINE NDEWA KITONGA',
+            'JOSEPHINE KITONGA': 'JOSEPHINE NDEWA KITONGA',
+            'PETER MOSINGO MATUYIA': 'PETER MOSINGO MATUYIA',
+            'GEORGE BARASA BARASA': 'GEORGE ALUKWE BARASA',
+            'GEORGE BARASA': 'GEORGE ALUKWE BARASA',
+            'KEVIN OUMA ODONGO': 'KEVIN ODONGO',
+            'KEVIN ODONGO': 'KEVIN ODONGO',
+            'WILLIAM ODUOR': 'WILLIAM ODUOR OTIENO',
+            'WILLIAM ODUOR OTIENO': 'WILLIAM ODUOR OTIENO',
+            'DAVID NYAMBURA MUTURI': 'DAVID NYAMBURA MUTURI',
+            'ELVIS KOECH': 'ELVIS KOECH',
+            'MARTIN KIRUI': 'MARTIN KURUI',
+            'MARTIN KURUI': 'MARTIN KURUI',
+            'ALFONCE ODUOR': 'ALFONCE ODUOR',
+            'ADAMS ONDIEK': 'ADAMS ONDIEK',
+            'HELLEN MUTHONI': 'HELLEN MUTHONI',
+            'AGATTA MUTHEU MUTINDI': 'AGATTA MUTHEU MUTINDI',
+            'NELLIUS WANGARI NDEGWA': 'NELLIUS WANGARI NDEGWA',
+            'MIRIAM NJERI WANJIKU': 'MIRIAM NJERI WANJIKU',
+            'ADAMS ONDIEK': 'ADAMS ONDIEK',
+            'HELLEN MUTHONI': 'HELLEN MUTHONI',
+            'AGATTA MUTHEU MUTINDI': 'AGATTA MUTHEU MUTINDI',
+            'NELLIUS WANGARI NDEGWA': 'NELLIUS WANGARI NDEGWA',
+            'MIRIAM NJERI WANJIKU': 'MIRIAM NJERI WANJIKU'
+        }
+        
+        # First, try exact mapping
+        if actual_normalized in name_mapping:
+            mapped_name = name_mapping[actual_normalized]
+            if mapped_name in target_names:
+                return mapped_name
+        
+        # If no exact mapping, try fuzzy matching
+        best_match = None
+        best_score = 0
+        
+        for target_name in target_names:
+            target_normalized = normalize_name(target_name)
+            target_words = target_normalized.split()
+            
+            # Method 1: Exact word matching
+            exact_matches = set(actual_words).intersection(set(target_words))
+            exact_score = len(exact_matches)
+            
+            # Method 2: Character-level similarity for each word
+            char_similarity_score = 0
+            for actual_word in actual_words:
+                for target_word in target_words:
+                    if actual_word != target_word:
+                        # Calculate character similarity
+                        similarity = calculate_word_similarity(actual_word, target_word)
+                        if similarity >= 0.8:  # 80% similarity threshold
+                            char_similarity_score += similarity
+            
+            # Method 3: Check if one name is contained within the other
+            containment_score = 0
+            if actual_normalized in target_normalized or target_normalized in actual_normalized:
+                containment_score = 2
+            
+            # Method 4: Check for common character patterns
+            pattern_score = 0
+            if len(actual_words) >= 2 and len(target_words) >= 2:
+                # Check if first and last words are similar
+                if calculate_word_similarity(actual_words[0], target_words[0]) >= 0.7:
+                    pattern_score += 1
+                if calculate_word_similarity(actual_words[-1], target_words[-1]) >= 0.7:
+                    pattern_score += 1
+            
+            # Calculate total score
+            total_score = exact_score + char_similarity_score + containment_score + pattern_score
+            
+            # Determine if this is a match
+            is_match = False
+            if exact_score >= 2:  # At least 2 exact word matches
+                is_match = True
+            elif exact_score >= 1 and (char_similarity_score >= 1.5 or containment_score >= 1):  # 1 exact + good similarity
+                is_match = True
+            elif char_similarity_score >= 2.5:  # High character similarity
+                is_match = True
+            elif containment_score >= 1:  # One name contains the other
+                is_match = True
+            elif pattern_score >= 2:  # Both first and last names are similar
+                is_match = True
+            
+            if is_match and total_score > best_score:
+                best_match = target_name
+                best_score = total_score
+        
+        return best_match
+    
+    def calculate_word_similarity(word1, word2):
+        """Calculate similarity between two words using character-level comparison"""
+        if len(word1) < 3 or len(word2) < 3:
+            return 0
+        
+        # Convert to sets of characters for comparison
+        chars1 = set(word1)
+        chars2 = set(word2)
+        
+        # Calculate Jaccard similarity
+        intersection = len(chars1.intersection(chars2))
+        union = len(chars1.union(chars2))
+        
+        if union == 0:
+            return 0
+        
+        jaccard_similarity = intersection / union
+        
+        # Also check for substring similarity
+        substring_similarity = 0
+        if len(word1) >= 4 and len(word2) >= 4:
+            if word1 in word2 or word2 in word1:
+                substring_similarity = 0.8
+        
+        # Check for common prefixes/suffixes
+        prefix_similarity = 0
+        if len(word1) >= 3 and len(word2) >= 3:
+            if word1[:3] == word2[:3]:  # Same first 3 characters
+                prefix_similarity = 0.6
+            elif word1[-3:] == word2[-3:]:  # Same last 3 characters
+                prefix_similarity = 0.6
+        
+        # Return the highest similarity score
+        return max(jaccard_similarity, substring_similarity, prefix_similarity)
+    
+    # Get all target names
+    target_names = list(target_data.keys())
+    
+    # Apply the matching to get the correct counts
+    monthly_leads = {}
+    unmatched_names = []
+    
+    for actual_name, count in monthly_leads_raw.items():
+        # Find the best match in target names
+        matched_target_name = find_best_match(actual_name, target_names)
+        
+        if matched_target_name:
+            if matched_target_name in monthly_leads:
+                monthly_leads[matched_target_name] += count
+            else:
+                monthly_leads[matched_target_name] = count
+        else:
+            # If no match found, use the original name
+            if actual_name in monthly_leads:
+                monthly_leads[actual_name] += count
+            else:
+                monthly_leads[actual_name] = count
     
     # Calculate Month-to-Day target based on working days
     today = datetime.now()
@@ -880,19 +1148,41 @@ if 'TEAM LEADER NAME' in df.columns:
     
     # Create comparison DataFrame
     comparison_data = []
-    for name, targets in target_data.items():
-        actual = monthly_leads.get(name, 0)
-        # Calculate month-to-day target (proportional to working days passed)
-        mtd_target = (targets['monthly_target'] / august_working_days) * working_days_passed
-        
-        comparison_data.append({
-            'Name': name,
-            'Monthly Target': targets['monthly_target'],
-            'Target MTD': targets['target_mtd'],
-            'Month-to-Day Target': round(mtd_target, 1),
-            'Actual Monthly Leads': actual,
-            'Performance %': (actual / targets['monthly_target'] * 100) if targets['monthly_target'] > 0 else 0
-        })
+    
+    # Get all unique team leader names from both target data and actual data
+    all_names = set(target_data.keys()) | set(monthly_leads.keys())
+    
+    for name in all_names:
+        if name in target_data:
+            # Use existing target data
+            targets = target_data[name]
+            actual = monthly_leads.get(name, 0)
+            # Calculate month-to-day target (proportional to working days passed)
+            mtd_target = (targets['monthly_target'] / august_working_days) * working_days_passed
+            
+            comparison_data.append({
+                'Name': name,
+                'Monthly Target': targets['monthly_target'],
+                'Target MTD': targets['target_mtd'],
+                'Month-to-Day Target': round(mtd_target, 1),
+                'Actual Monthly Leads': actual,
+                'Performance %': (actual / targets['monthly_target'] * 100) if targets['monthly_target'] > 0 else 0
+            })
+        else:
+            # Add new team leader with default targets
+            actual = monthly_leads.get(name, 0)
+            default_monthly_target = 147.00  # Default target
+            default_mtd_target = 7.00  # Default MTD target
+            mtd_target = (default_monthly_target / august_working_days) * working_days_passed
+            
+            comparison_data.append({
+                'Name': name,
+                'Monthly Target': default_monthly_target,
+                'Target MTD': default_mtd_target,
+                'Month-to-Day Target': round(mtd_target, 1),
+                'Actual Monthly Leads': actual,
+                'Performance %': (actual / default_monthly_target * 100) if default_monthly_target > 0 else 0
+            })
     
     comparison_df = pd.DataFrame(comparison_data)
     comparison_df = comparison_df.sort_values('Performance %', ascending=False)
@@ -1023,6 +1313,107 @@ if 'TEAM LEADER NAME' in df.columns:
     '''
     
     st.markdown(metric_cards_html, unsafe_allow_html=True)
+    
+    # --- Current Month Agent Performance ---
+    st.markdown("---")
+    st.subheader("Current Month Agent Performance")
+    
+    # Get current month data
+    current_month = datetime.now().strftime('%Y-%m')
+    current_month_data = df[df['DATE_parsed'].dt.strftime('%Y-%m') == current_month]
+    
+    if not current_month_data.empty and 'AGENT NAME' in current_month_data.columns:
+        # Get agent counts for current month
+        agent_counts_raw = current_month_data['AGENT NAME'].value_counts()
+        
+        # Filter out empty or NaN agent names
+        agent_counts_clean = {}
+        for agent_name, count in agent_counts_raw.items():
+            if pd.notna(agent_name) and str(agent_name).strip() != '':
+                # Handle multiple agents in one field (comma-separated)
+                agents = [agent.strip() for agent in str(agent_name).split(',') if agent.strip()]
+                for agent in agents:
+                    if agent in agent_counts_clean:
+                        agent_counts_clean[agent] += count
+                    else:
+                        agent_counts_clean[agent] = count
+        
+        # Convert to pandas Series for plotting
+        agent_series = pd.Series(agent_counts_clean)
+        
+        # Sort by lead count (descending) and take top 20 agents
+        agent_series_sorted = agent_series.sort_values(ascending=False).head(20)
+        
+        # Create the bar chart
+        fig = go.Figure()
+        fig.add_bar(
+            x=agent_series_sorted.index,
+            y=agent_series_sorted.values,
+            marker_color='#0074D9',
+            hovertemplate='<b>%{x}</b><br>Leads: %{y}<extra></extra>'
+        )
+        
+        fig.update_layout(
+            title=f"Top 20 Agents - {current_month}",
+            plot_bgcolor='white',
+            paper_bgcolor='white',
+            font=dict(color='#222', size=14),
+            xaxis=dict(
+                title=dict(text='Agent Name', font=dict(color='#222', size=16)),
+                tickangle=-45,
+                color='#222',
+                linecolor='#222',
+                tickfont=dict(color='#222', size=10),
+                gridcolor='#ccc',
+                zerolinecolor='#ccc'
+            ),
+            yaxis=dict(
+                title=dict(text='Number of Leads', font=dict(color='#222', size=16)),
+                color='#222',
+                linecolor='#222',
+                tickfont=dict(color='#222'),
+                gridcolor='#ccc',
+                zerolinecolor='#ccc'
+            ),
+            margin=dict(l=20, r=20, t=40, b=120),  # Increased bottom margin for rotated labels
+            height=500,
+            showlegend=False
+        )
+        
+        st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False, 'scrollZoom': True})
+        
+        # Add summary statistics
+        total_leads_month = sum(agent_counts_clean.values())
+        total_agents = len(agent_counts_clean)
+        avg_leads_per_agent = total_leads_month / total_agents if total_agents > 0 else 0
+        max_leads = max(agent_counts_clean.values()) if agent_counts_clean else 0
+        
+        # Create summary cards
+        summary_stats_html = f'''
+        <div style="display: flex; gap: 10px; margin: 20px 0;">
+            <div style="flex: 1; background: white; border: 1px solid #e0e0e0; border-radius: 8px; padding: 15px; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                <div style="font-size: 24px; font-weight: bold; color: #222; margin-bottom: 5px;">{total_leads_month}</div>
+                <div style="font-size: 12px; color: #666;">Total Leads This Month</div>
+            </div>
+            <div style="flex: 1; background: white; border: 1px solid #e0e0e0; border-radius: 8px; padding: 15px; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                <div style="font-size: 24px; font-weight: bold; color: #222; margin-bottom: 5px;">{total_agents}</div>
+                <div style="font-size: 12px; color: #666;">Active Agents</div>
+            </div>
+            <div style="flex: 1; background: white; border: 1px solid #e0e0e0; border-radius: 8px; padding: 15px; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                <div style="font-size: 24px; font-weight: bold; color: #222; margin-bottom: 5px;">{avg_leads_per_agent:.1f}</div>
+                <div style="font-size: 12px; color: #666;">Average Leads per Agent</div>
+            </div>
+            <div style="flex: 1; background: white; border: 1px solid #e0e0e0; border-radius: 8px; padding: 15px; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                <div style="font-size: 24px; font-weight: bold; color: #222; margin-bottom: 5px;">{max_leads}</div>
+                <div style="font-size: 12px; color: #666;">Highest Performing Agent</div>
+            </div>
+        </div>
+        '''
+        
+        st.markdown(summary_stats_html, unsafe_allow_html=True)
+        
+    else:
+        st.info(f'No data found for {current_month} or AGENT NAME column not found.')
     
 else:
     st.info('TEAM LEADER NAME column not found in the data.') 

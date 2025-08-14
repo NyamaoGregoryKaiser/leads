@@ -27,8 +27,38 @@ def get_leads_dataframe():
     client = gspread.authorize(creds)
     sheet = client.open_by_key(SHEET_ID)
     worksheet = sheet.sheet1  # Assumes data is in the first sheet
-    data = worksheet.get_all_records()
-    df = pd.DataFrame(data)
+    # Use values and deduplicate headers to handle duplicates like repeated 'AGENT NAME'
+    values = worksheet.get_all_values()
+    if not values:
+        return pd.DataFrame()
+    raw_headers = values[0]
+    counts = {}
+    headers = []
+    for h in raw_headers:
+        name = (h or '').strip()
+        if name == '':
+            name = 'Unnamed'
+        if name in counts:
+            counts[name] += 1
+            headers.append(f"{name}_{counts[name]}")
+        else:
+            counts[name] = 1
+            headers.append(name)
+    rows = values[1:]
+    normalized_rows = [row + [''] * (len(headers) - len(row)) if len(row) < len(headers) else row[:len(headers)] for row in rows]
+    df = pd.DataFrame(normalized_rows, columns=headers)
+    
+    # Combine all AGENT NAME columns into a single column
+    agent_columns = [col for col in df.columns if col.startswith('AGENT NAME')]
+    if len(agent_columns) > 1:
+        # Combine all agent name columns, filtering out empty values
+        df['AGENT NAME'] = df[agent_columns].apply(
+            lambda row: ', '.join([str(val).strip() for val in row if pd.notna(val) and str(val).strip() != '']), 
+            axis=1
+        )
+        # Drop the duplicate columns, keeping only the combined 'AGENT NAME'
+        df = df.drop(columns=[col for col in agent_columns if col != 'AGENT NAME'])
+    
     return df
 
 def main():
