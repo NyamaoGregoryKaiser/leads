@@ -264,8 +264,9 @@ st.markdown('''
     .card-row-metrics {
         display: flex;
         flex-wrap: wrap;
-        gap: 0.2em;
+        gap: 1cm;
         overflow-x: auto;
+        margin-top: -3.2cm;
         margin-bottom: 1em;
         max-width: 100%;
         width: 100%;
@@ -273,8 +274,8 @@ st.markdown('''
     }
     .card-row-metrics .dashboard-card {
         flex: 1 0 120px;
-        min-width: 100px;
-        max-width: 220px;
+        min-width: calc(100px + 0.5cm);
+        max-width: calc(220px + 0.5cm);
         margin-bottom: 0.3em;
         box-sizing: border-box;
     }
@@ -282,7 +283,7 @@ st.markdown('''
         .card-row-metrics {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 0.2em;
+            gap: 0.8cm;
             width: 100%;
         }
         .card-row-metrics .dashboard-card {
@@ -303,9 +304,9 @@ card_style = """
     box-shadow: 0 2px 12px 0 rgba(0,0,0,0.08);
     border: 2px solid #0074D9;
     padding: 0.18em 0.15em 0.12em 0.15em;
-    margin: 0.18em 0.1em 0.18em 0.1em;
+    margin: 0 0.5cm 0.5cm 0.5cm;
     text-align: center;
-    min-width: 100px;
+    min-width: calc(150px);
     display: flex;
     flex-direction: column;
     justify-content: center;
@@ -316,11 +317,11 @@ card_style = """
 st.markdown('''
     <style>
     .dashboard-card {
-        min-height: 60px !important;
+        min-height: calc(60px + 0.5cm) !important;
     }
     @media (max-width: 600px) {
         .dashboard-card {
-            min-height: 32px !important;
+            min-height: calc(32px + 0.5cm) !important;
         }
     }
     </style>
@@ -378,10 +379,39 @@ with col_branch:
         df_branch_source = df[df['DATE_parsed'].dt.strftime('%Y-%m') == selected_month_branch]
     else:
         df_branch_source = df
-    
-    if 'BRANCH' in df_branch_source.columns and 'SOURCE OF LEAD GENERATION' in df_branch_source.columns:
-        # Create a pivot table: rows=BRANCH, columns=SOURCE OF LEAD GENERATION, values=count
-        branch_source = pd.pivot_table(df_branch_source, index='BRANCH', columns='SOURCE OF LEAD GENERATION', aggfunc='size', fill_value=0)
+
+    # Find normalized column names for Branch and Source
+    def find_col(df_like, candidates):
+        cols_lower = {c.lower(): c for c in df_like.columns}
+        for cand in candidates:
+            if cand.lower() in cols_lower:
+                return cols_lower[cand.lower()]
+        # fallback: partial contains match
+        for c in df_like.columns:
+            cl = c.lower()
+            if 'branch' in cl and any('branch' in x.lower() for x in candidates):
+                return c
+            if ('source' in cl or 'lead' in cl) and any('source' in x.lower() or 'lead' in x.lower() for x in candidates):
+                return c
+        return None
+
+    branch_candidates = ['BRANCH', 'Branch', 'BRANCH NAME', 'BRANCH_NAME']
+    source_candidates = [
+        'SOURCE OF LEAD GENERATION', 'Source of Lead Generation', 'SOURCE', 'Source',
+        'LEAD SOURCE', 'Lead Source', 'SOURCE OF LEADS', 'Lead Generation Source'
+    ]
+    branch_col_actual = find_col(df_branch_source, branch_candidates)
+    source_col_actual = find_col(df_branch_source, source_candidates)
+
+    if branch_col_actual and source_col_actual:
+        # Create a pivot table: rows=Branch, columns=Source, values=count
+        branch_source = pd.pivot_table(
+            df_branch_source,
+            index=branch_col_actual,
+            columns=source_col_actual,
+            aggfunc='size',
+            fill_value=0
+        )
         import matplotlib.pyplot as plt
         branch_source = branch_source.loc[branch_source.sum(axis=1).sort_values(ascending=False).index]  # Sort branches by total leads
         fig, ax = plt.subplots(figsize=(10, max(6, 0.5*len(branch_source))))
@@ -404,14 +434,21 @@ with col_source:
         st.subheader("Leads per Source", anchor=False)
     with col_filter:
         st.markdown('<div class="small-filter">', unsafe_allow_html=True)
-        branches = ['All'] + sorted(df['BRANCH'].unique()) if 'BRANCH' in df.columns else ['All']
+        # Reuse normalized branch column for the dropdown
+        branch_col_global = find_col(df, branch_candidates)
+        branches = ['All'] + (sorted(df[branch_col_global].unique()) if branch_col_global else [])
         selected_branch = st.selectbox(' ', branches, key='branch_filter_source')
         st.markdown('</div>', unsafe_allow_html=True)
-    if selected_branch != 'All' and 'BRANCH' in df.columns:
-        df_source = df[df['BRANCH'] == selected_branch]
+    if selected_branch != 'All' and branch_col_global:
+        df_source = df[df[branch_col_global] == selected_branch]
     else:
         df_source = df
-    source_counts = df_source['SOURCE OF LEAD GENERATION'].value_counts()
+    source_col_global = find_col(df_source, source_candidates)
+    if source_col_global:
+        source_counts = df_source[source_col_global].value_counts()
+    else:
+        st.info('SOURCE OF LEAD GENERATION column not found in the data.')
+        source_counts = pd.Series(dtype=int)
     import plotly.graph_objects as go
     bar_fig = go.Figure()
     bar_fig.add_bar(x=source_counts.index, y=source_counts.values, marker_color="#0074D9")
@@ -481,6 +518,7 @@ with col_leads:
             zerolinecolor='#ccc'
         ),
         margin=dict(l=20, r=20, t=30, b=40),
+        height=500,
         showlegend=False
     )
     st.plotly_chart(bar_fig2, use_container_width=True, config={'displayModeBar': False, 'scrollZoom': True})
@@ -571,7 +609,7 @@ with col_conv:
                     nticks=len(team_leaders)
                 ),
                 margin=dict(l=20, r=20, t=40, b=40),
-                width=650, height=dynamic_height,
+                height=500,
                 showlegend=False,
                 plot_bgcolor='white',
                 paper_bgcolor='white',
@@ -989,7 +1027,6 @@ if 'TEAM LEADER NAME' in df.columns:
             'WILLIAM ODUOR OTIENO': 'WILLIAM ODUOR OTIENO',
             'DAVID NYAMBURA MUTURI': 'DAVID NYAMBURA MUTURI',
             'ELVIS KOECH': 'ELVIS KOECH',
-            'MARTIN KIRUI': 'MARTIN KURUI',
             'MARTIN KURUI': 'MARTIN KURUI',
             'ALFONCE ODUOR': 'ALFONCE ODUOR',
             'ADAMS ONDIEK': 'ADAMS ONDIEK',
@@ -1283,7 +1320,7 @@ if 'TEAM LEADER NAME' in df.columns:
     total_monthly_target = comparison_df['Monthly Target'].sum()
     total_mtd_target = comparison_df['Month-to-Day Target'].sum()
     total_actual_leads = comparison_df['Actual Monthly Leads'].sum()
-    overall_performance = (total_actual_leads / total_monthly_target * 100) if total_monthly_target > 0 else 0
+    overall_performance = (total_actual_leads / total_mtd_target * 100) if total_mtd_target > 0 else 0
     above_target = len(comparison_df[comparison_df['Performance %'] >= 100])
     
     # Custom white metric cards using HTML
